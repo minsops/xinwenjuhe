@@ -9,6 +9,7 @@ from uuid import UUID
 
 from app.models.contradiction import Contradiction
 from app.models.fact_fragment import FactFragment
+from app.services.clustering.event_clusterer import EventClusterer
 
 
 class ContradictionDetector:
@@ -75,9 +76,7 @@ class ContradictionDetector:
             for fragment in fragments
             if fragment.fragment_type in {"cause", "consequence", "who"} or _attribution_label(fragment)
         ]
-        by_topic: dict[str, list[FactFragment]] = defaultdict(list)
-        for fragment in candidates:
-            by_topic[_topic_key(fragment)].append(fragment)
+        by_topic = self._group_by_topic_semantic(candidates)
 
         contradictions: list[Contradiction] = []
         for topic, items in by_topic.items():
@@ -115,9 +114,7 @@ class ContradictionDetector:
     async def detect_timeline_conflicts(self, event_id: UUID, fragments: list[FactFragment] | None = None) -> list[Contradiction]:
         """Detect materially different timestamps for substantially similar event claims."""
         fragments = [fragment for fragment in fragments or [] if fragment.timestamp_mentioned]
-        by_topic: dict[str, list[FactFragment]] = defaultdict(list)
-        for fragment in fragments:
-            by_topic[_topic_key(fragment)].append(fragment)
+        by_topic = self._group_by_topic_semantic(fragments)
 
         contradictions: list[Contradiction] = []
         for topic, items in by_topic.items():
@@ -186,14 +183,15 @@ class ContradictionDetector:
     async def detect_framing_differences(self, event_id: UUID, fragments: list[FactFragment] | None = None) -> list[Contradiction]:
         """Detect sharply different wording for the same actor or action."""
         fragments = fragments or []
-        by_topic: dict[str, list[tuple[FactFragment, str]]] = defaultdict(list)
-        for fragment in fragments:
-            label = _framing_label(fragment.content)
-            if label:
-                by_topic[_topic_key(fragment)].append((fragment, label))
+        by_topic = self._group_by_topic_semantic(fragments)
 
         contradictions: list[Contradiction] = []
-        for topic, labelled in by_topic.items():
+        for topic, items in by_topic.items():
+            labelled = [
+                (fragment, label)
+                for fragment in items
+                if (label := _framing_label(fragment.content))
+            ]
             labels = {label for _, label in labelled}
             if len(labels) < 2:
                 continue
@@ -220,6 +218,35 @@ class ContradictionDetector:
                 )
             )
         return contradictions
+
+    def _group_by_topic_semantic(
+        self,
+        fragments: list[FactFragment],
+        similarity_threshold: float = 0.80,
+    ) -> dict[str, list[FactFragment]]:
+        """Group by rule-derived topic, then merge groups with similar embeddings."""
+        by_topic: dict[str, list[FactFragment]] = defaultdict(list)
+        for fragment in fragments:
+            by_topic[_topic_key(fragment)].append(fragment)
+
+        keys = list(by_topic.keys())
+        merged: dict[str, list[FactFragment]] = {}
+        used: set[str] = set()
+        for index, key_a in enumerate(keys):
+            if key_a in used:
+                continue
+            group = list(by_topic[key_a])
+            for key_b in keys[index + 1 :]:
+                if key_b in used:
+                    continue
+                emb_a = by_topic[key_a][0].embedding
+                emb_b = by_topic[key_b][0].embedding
+                if emb_a and emb_b and EventClusterer.cosine(emb_a, emb_b) > similarity_threshold:
+                    group.extend(by_topic[key_b])
+                    used.add(key_b)
+            merged[key_a] = group
+            used.add(key_a)
+        return merged
 
 
 def _topic_key(fragment: FactFragment) -> str:

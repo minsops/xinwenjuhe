@@ -38,5 +38,39 @@ class EchoLLMProvider(LLMProvider):
     async def complete(self, system_prompt: str, user_prompt: str, **kwargs) -> str:
         if "翻译" in user_prompt or "translate" in user_prompt.lower():
             return user_prompt.split("原文：")[-1].strip() if "原文：" in user_prompt else user_prompt
+        if "事实" in user_prompt or "fact" in user_prompt.lower() or "extract" in user_prompt.lower():
+            title_line = ""
+            for line in user_prompt.split("\n"):
+                if "标题" in line or "title" in line.lower():
+                    title_line = line.split("：")[-1].split(":")[-1].strip()
+                    break
+            if not title_line:
+                title_line = user_prompt[:100].strip()
+            return json.dumps(
+                [
+                    {
+                        "type": "what",
+                        "content": title_line,
+                        "entities": {},
+                        "numbers": {},
+                        "source_attribution": "unattributed",
+                        "certainty_level": "reportedly",
+                    }
+                ],
+                ensure_ascii=False,
+            )
+        if "框架" in user_prompt or "frame" in user_prompt.lower() or "narrative" in user_prompt.lower():
+            return json.dumps(
+                {
+                    "frames": ["news_report"],
+                    "angle": "factual report",
+                    "emphasis": [],
+                    "downplayed": [],
+                    "tone": "neutral",
+                    "wording": [],
+                },
+                ensure_ascii=False,
+            )
+        if "概要" in user_prompt or "summary" in user_prompt.lower() or "编辑" in user_prompt:
+            return "Multiple sources report the event with varying details. Key facts remain under verification."
         return "{}"
-

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchAnalysis } from "../services/api";
 import type { EventAnalysis } from "../types/analysis";
 
-export function useAnalysis(eventId?: string) {
+export function useAnalysis(eventId?: string, refreshKey = 0) {
   const [analysis, setAnalysis] = useState<EventAnalysis | undefined>();
 
   useEffect(() => {
@@ -12,7 +12,7 @@ export function useAnalysis(eventId?: string) {
       return;
     }
     fetchAnalysis(eventId).then(setAnalysis).catch(() => setAnalysis(demoAnalysis()));
-  }, [eventId]);
+  }, [eventId, refreshKey]);
 
   return analysis;
 }

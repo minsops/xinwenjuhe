@@ -5,6 +5,7 @@ import type { Event } from "../types/event";
 export function useEvent(query: EventQuery = {}) {
   const [events, setEvents] = useState<Event[]>([]);
   const [selected, setSelected] = useState<Event | undefined>();
+  const queryKey = JSON.stringify(query);
 
   useEffect(() => {
     fetchEvents(query)
@@ -17,7 +18,7 @@ export function useEvent(query: EventQuery = {}) {
         setEvents([fallback]);
         setSelected(fallback);
       });
-  }, [query.region, query.category, query.sort, query.min_heat]);
+  }, [queryKey]);
 
   return { events, selected, setSelected };
 }

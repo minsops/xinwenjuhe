@@ -30,6 +30,10 @@ class ProjectContractsTest(unittest.TestCase):
         events_model = (BACKEND_ROOT / "app/models/event.py").read_text(encoding="utf-8")
         self.assertIn("from pgvector.sqlalchemy import Vector", events_model)
         self.assertIn("center_embedding: Mapped[list[float] | None] = mapped_column(Vector(384))", events_model)
+        source_migration = (BACKEND_ROOT / "alembic/versions/0003_source_scraper_verified_at.py").read_text(encoding="utf-8")
+        source_model = (BACKEND_ROOT / "app/models/source.py").read_text(encoding="utf-8")
+        self.assertIn("scraper_verified_at", source_migration)
+        self.assertIn("scraper_verified_at", source_model)
 
     def test_compose_declares_required_services(self) -> None:
         compose_path = ROOT / "docker-compose.yml"
@@ -41,6 +45,9 @@ class ProjectContractsTest(unittest.TestCase):
         self.assertIn("pgvector/pgvector:pg16", compose)
         self.assertIn("getmeili/meilisearch", compose)
         self.assertIn("condition: service_healthy", compose)
+        self.assertIn("ollama:", compose)
+        self.assertIn('profiles: ["ollama"]', compose)
+        self.assertIn("ollama_data:", compose)
 
     def test_stack_verifier_checks_database_contracts(self) -> None:
         verifier_path = ROOT / "scripts/verify_stack.sh"
@@ -72,6 +79,9 @@ class ProjectContractsTest(unittest.TestCase):
         events_api = (BACKEND_ROOT / "app/api/v1/events.py").read_text(encoding="utf-8")
         self.assertIn("source_graph", mapper)
         self.assertIn("timeline", mapper)
+        self.assertIn("_semantic_group", mapper)
+        self.assertIn("_generate_summary", mapper)
+        self.assertIn("SUMMARY_PROMPT", mapper)
         self.assertIn("def _source_graph", mapper)
         self.assertIn("def _timeline", mapper)
         self.assertIn("analyzed_article_count", mapper)
@@ -109,6 +119,11 @@ class ProjectContractsTest(unittest.TestCase):
         self.assertIn("TextEmbedder", service)
         self.assertIn("embed_text", service)
         self.assertIn("embedding=", service)
+        self.assertIn("is_using_fallback", service)
+        embedder = (BACKEND_ROOT / "app/services/clustering/embedder.py").read_text(encoding="utf-8")
+        self.assertIn("logger.info", embedder)
+        self.assertIn("logger.warning", embedder)
+        self.assertIn("def is_using_fallback", embedder)
 
     def test_clustering_uses_time_window_existing_events_and_source_diversity(self) -> None:
         pipeline = (BACKEND_ROOT / "app/services/clustering/pipeline.py").read_text(encoding="utf-8")
@@ -137,6 +152,7 @@ class ProjectContractsTest(unittest.TestCase):
         self.assertIn("next_button", scraper)
         self.assertIn("@retry", scraper)
         self.assertIn("_parse_date", scraper)
+        self.assertIn("Scraper returned 0 articles", scraper)
 
     def test_api_feed_type_is_collected_with_generic_json_mapper(self) -> None:
         collector = (BACKEND_ROOT / "app/services/collector/api_collector.py").read_text(encoding="utf-8")
@@ -221,7 +237,10 @@ class ProjectContractsTest(unittest.TestCase):
         self.assertIn("_search_articles", search)
 
     def test_llm_calls_use_provider_interface_with_runtime_fallback(self) -> None:
+        base = (BACKEND_ROOT / "app/services/llm/base.py").read_text(encoding="utf-8")
         factory = (BACKEND_ROOT / "app/services/llm/factory.py").read_text(encoding="utf-8")
+        self.assertIn("Multiple sources report the event", base)
+        self.assertIn("source_attribution", base)
         self.assertIn("class FallbackLLMProvider", factory)
         self.assertIn("provider.complete", factory)
         self.assertIn("EchoLLMProvider", factory)
@@ -244,6 +263,27 @@ class ProjectContractsTest(unittest.TestCase):
         self.assertIn("create_task(redis_event_listener())", main)
         self.assertIn("publish_event_update", analyze_task)
         self.assertIn('"analysis_updated"', analyze_task)
+
+    def test_fix_task_contracts_are_declared(self) -> None:
+        analyze_task = (BACKEND_ROOT / "app/tasks/analyze_task.py").read_text(encoding="utf-8")
+        detector = (BACKEND_ROOT / "app/services/analyzer/contradiction_detector.py").read_text(encoding="utf-8")
+        translator = (BACKEND_ROOT / "app/services/processor/translator.py").read_text(encoding="utf-8")
+        readme_path = ROOT / "README.md"
+        sources = (ROOT / "data/seed/sources.json").read_text(encoding="utf-8")
+        self.assertIn("merge_group_results", analyze_task)
+        self.assertIn("merge_group_results.s()", analyze_task)
+        self.assertIn("_group_by_topic_semantic", detector)
+        self.assertIn("EventClusterer.cosine", detector)
+        self.assertIn("TRANSLATION_CACHE_VERSION", translator)
+        self.assertIn("translate:{TRANSLATION_CACHE_VERSION}", translator)
+        if readme_path.exists():
+            readme = readme_path.read_text(encoding="utf-8")
+            self.assertIn("LLM Configuration", readme)
+            self.assertIn("Option A: Ollama", readme)
+            self.assertIn("Option B: OpenAI", readme)
+            self.assertIn("Option C: Claude", readme)
+        self.assertIn("div.news-list a[href*='/world/']", sources)
+        self.assertIn('"last_verified":"2026-06-09"', sources)
 
 
 if __name__ == "__main__":

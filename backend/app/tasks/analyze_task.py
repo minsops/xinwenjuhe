@@ -36,6 +36,20 @@ def deduplicate_articles(self, payload: dict) -> dict:
     return asyncio.run(_deduplicate_articles(self.request.id, payload))
 
 
+@celery.task(bind=True, name="app.tasks.analyze_task.merge_group_results")
+def merge_group_results(self, results: list) -> dict:
+    """Merge Celery group result lists into one standard payload dict."""
+    merged: dict = {}
+    for result in results:
+        if isinstance(result, dict):
+            merged.update(result)
+        elif isinstance(result, list):
+            for item in result:
+                if isinstance(item, dict):
+                    merged.update(item)
+    return merged
+
+
 @celery.task(bind=True, name="app.tasks.analyze_task.extract_facts")
 def extract_facts(self, payload: dict) -> dict:
     return asyncio.run(_extract_facts(self.request.id, _event_id_from_payload(payload), payload))
@@ -67,6 +81,7 @@ def process_event_pipeline(event_id: str) -> str:
     workflow = chain(
         collect_articles_for_event.s(event_id),
         group(translate_articles.s(), deduplicate_articles.s()),
+        merge_group_results.s(),
         extract_facts.s(),
         detect_contradictions.s(),
         analyze_narratives.s(),
@@ -79,13 +94,13 @@ def process_event_pipeline(event_id: str) -> str:
 
 def _event_id_from_payload(payload: dict | list) -> str:
     """Recover event id from normal or Celery group payloads."""
+    if isinstance(payload, dict):
+        return str(payload.get("event_id", ""))
     if isinstance(payload, list):
         for item in payload:
-            event_id = _event_id_from_payload(item)
-            if event_id:
-                return event_id
-        return ""
-    return str(payload.get("event_id") or payload.get("result", {}).get("event_id") or "")
+            if isinstance(item, dict) and item.get("event_id"):
+                return str(item["event_id"])
+    return ""
 
 
 async def _translate_articles(task_id: str, payload: dict) -> dict:

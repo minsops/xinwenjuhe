@@ -32,6 +32,45 @@ TruthPuzzle is an open source multi-perspective news aggregation and analysis pl
 
 On startup the backend applies Alembic migrations and imports seed sources if the database is empty.
 
+## LLM Configuration
+
+The analysis engine requires an LLM provider to extract facts, generate summaries,
+and analyze narrative frames. Without one, the pipeline uses a local fallback that
+produces placeholder results.
+
+### Option A: Ollama (recommended for local development)
+
+1. Install [Ollama](https://ollama.ai) and pull a model:
+
+   ```bash
+   ollama pull qwen2.5:7b
+   ```
+
+2. Set in `.env`:
+
+   ```env
+   LLM_PROVIDER=ollama
+   OLLAMA_BASE_URL=http://host.docker.internal:11434
+   OLLAMA_MODEL=qwen2.5:7b
+   ```
+
+### Option B: OpenAI
+
+```env
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+```
+
+### Option C: Claude
+
+```env
+LLM_PROVIDER=claude
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+The system uses a fallback chain: if the primary provider fails at runtime, it
+tries the next available provider before falling back to the local echo provider.
+
 ## Full Stack Verification
 
 When Docker is available, run:

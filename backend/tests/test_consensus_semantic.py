@@ -1,0 +1,121 @@
+"""Tests for semantic consensus grouping and LLM summary fallback."""
+
+from __future__ import annotations
+
+import asyncio
+import importlib.util
+from types import SimpleNamespace
+import unittest
+import uuid
+
+if not importlib.util.find_spec("sqlalchemy"):
+    raise unittest.SkipTest("SQLAlchemy is required for consensus tests")
+
+from app.models.fact_fragment import FactFragment
+from app.services.analyzer.consensus_mapper import ConsensusMapper
+from app.services.llm.base import LLMProvider
+
+
+class SummaryLLM(LLMProvider):
+    """Test double that returns a readable summary."""
+
+    async def complete(self, system_prompt: str, user_prompt: str, **kwargs) -> str:
+        return "Two independent sources report a strike on the military base while details remain limited."
+
+
+class EmptyLLM(LLMProvider):
+    """Test double that forces fallback summary generation."""
+
+    async def complete(self, system_prompt: str, user_prompt: str, **kwargs) -> str:
+        return "{}"
+
+
+class ConsensusSemanticTest(unittest.TestCase):
+    """Validate semantic fact grouping behavior."""
+
+    def test_semantically_similar_fragments_are_grouped(self) -> None:
+        event_id = uuid.uuid4()
+        fragments = [
+            _fragment(event_id, uuid.uuid4(), uuid.uuid4(), "The strike targeted the air base", [1.0, 0.0, 0.0]),
+            _fragment(event_id, uuid.uuid4(), uuid.uuid4(), "Military base was hit by missiles", [0.96, 0.04, 0.0]),
+        ]
+
+        payload = asyncio.run(
+            ConsensusMapper(llm=EmptyLLM()).generate_analysis_payload(event_id, fragments, [])
+        )
+
+        self.assertEqual(len(payload["consensus_facts"]), 1)
+        self.assertEqual(payload["consensus_facts"][0]["confirmed_by"], 2)
+        self.assertEqual(len(payload["consensus_facts"][0]["article_ids"]), 2)
+
+    def test_dissimilar_fragments_stay_separate(self) -> None:
+        event_id = uuid.uuid4()
+        fragments = [
+            _fragment(event_id, uuid.uuid4(), uuid.uuid4(), "The strike targeted the air base", [1.0, 0.0, 0.0]),
+            _fragment(event_id, uuid.uuid4(), uuid.uuid4(), "Oil prices surged after the incident", [0.0, 1.0, 0.0]),
+        ]
+
+        groups = ConsensusMapper(llm=EmptyLLM())._semantic_group(fragments)
+
+        self.assertEqual(len(groups), 2)
+
+    def test_fragments_without_embedding_are_skipped(self) -> None:
+        event_id = uuid.uuid4()
+        fragments = [
+            _fragment(event_id, uuid.uuid4(), uuid.uuid4(), "No vector", None),
+            _fragment(event_id, uuid.uuid4(), uuid.uuid4(), "Vector fact", [1.0, 0.0, 0.0]),
+        ]
+
+        groups = ConsensusMapper(llm=EmptyLLM())._semantic_group(fragments)
+
+        self.assertEqual(len(groups), 1)
+        self.assertEqual(groups[0]["representative"], "Vector fact")
+
+    def test_llm_summary_is_used_when_valid(self) -> None:
+        summary = asyncio.run(
+            ConsensusMapper(llm=SummaryLLM())._generate_summary(
+                [{"fact": "The base was struck", "confirmed_by": 2, "total": 2}],
+                [],
+                2,
+            )
+        )
+
+        self.assertIn("independent sources", summary)
+
+    def test_summary_falls_back_when_llm_is_empty(self) -> None:
+        summary = asyncio.run(
+            ConsensusMapper(llm=EmptyLLM())._generate_summary(
+                [{"fact": "The base was struck", "confirmed_by": 2, "total": 2}],
+                [],
+                2,
+            )
+        )
+
+        self.assertTrue(summary.startswith("Based on 2 source(s)"))
+
+
+def _fragment(
+    event_id: uuid.UUID,
+    article_id: uuid.UUID,
+    source_id: uuid.UUID,
+    content: str,
+    embedding: list[float] | None,
+) -> FactFragment:
+    return FactFragment(
+        id=uuid.uuid4(),
+        event_id=event_id,
+        article_id=article_id,
+        source_id=source_id,
+        fragment_type="what",
+        content=content,
+        content_en=content,
+        entities={},
+        numbers={},
+        source_attribution="official_statement",
+        certainty_level="confirmed",
+        embedding=embedding,
+    )
+
+
+if __name__ == "__main__":
+    unittest.main()

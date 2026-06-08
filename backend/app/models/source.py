@@ -38,6 +38,7 @@ class Source(Base):
     separates_news_opinion: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_collected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    scraper_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -45,4 +46,3 @@ class Source(Base):
     )
 
     articles = relationship("Article", back_populates="source")
-

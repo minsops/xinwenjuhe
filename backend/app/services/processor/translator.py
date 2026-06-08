@@ -24,6 +24,8 @@ TRANSLATION_PROMPT = """将以下{source_lang}新闻报道翻译为{target_lang}
 {original_text}
 """
 
+TRANSLATION_CACHE_VERSION = "v1"
+
 
 class TranslationService:
     """LLM-backed translation service preserving original article fields."""
@@ -80,6 +82,6 @@ class TranslationService:
     @staticmethod
     def cache_key(text: str, target_lang: str, article_id: str | None = None, field: str = "content") -> str:
         if article_id:
-            return f"translate:{article_id}:{field}:{target_lang}"
+            return f"translate:{TRANSLATION_CACHE_VERSION}:{article_id}:{field}:{target_lang}"
         digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
-        return f"translate:{digest}:{target_lang}"
+        return f"translate:{TRANSLATION_CACHE_VERSION}:{digest}:{target_lang}"

@@ -49,6 +49,35 @@ class ContradictionDetectorTest(unittest.TestCase):
         self.assertTrue(all(item.fragment_ids for item in contradictions))
         self.assertTrue(all(item.source_ids for item in contradictions))
 
+    def test_semantic_topic_grouping_merges_different_rule_keys(self) -> None:
+        event_id = uuid.uuid4()
+        fragments = [
+            _fragment(
+                event_id,
+                uuid.uuid4(),
+                uuid.uuid4(),
+                "cause",
+                "Officials blamed Alpha Brigade for the air base strike",
+                entities={"event": "air base strike", "responsible": "Alpha Brigade"},
+                embedding=[1.0, 0.0, 0.0],
+            ),
+            _fragment(
+                event_id,
+                uuid.uuid4(),
+                uuid.uuid4(),
+                "cause",
+                "Authorities accused Beta Cell over the missile hit on the base",
+                entities={"target": "missile hit base", "responsible": "Beta Cell"},
+                embedding=[0.97, 0.03, 0.0],
+            ),
+        ]
+
+        contradictions = asyncio.run(ContradictionDetector().detect_attribution_conflicts(event_id, fragments))
+
+        self.assertEqual(len(contradictions), 1)
+        self.assertEqual(contradictions[0].contradiction_type, "attribution_conflict")
+        self.assertEqual(len(contradictions[0].fragment_ids), 2)
+
 
 def _fragment(
     event_id: uuid.UUID,
@@ -60,6 +89,7 @@ def _fragment(
     entities: dict | None = None,
     numbers: dict | None = None,
     timestamp: datetime | None = None,
+    embedding: list[float] | None = None,
 ) -> FactFragment:
     return FactFragment(
         id=uuid.uuid4(),
@@ -74,6 +104,7 @@ def _fragment(
         source_attribution="official_statement",
         certainty_level="reported",
         timestamp_mentioned=timestamp,
+        embedding=embedding,
     )
 
 

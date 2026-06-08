@@ -41,7 +41,7 @@ class SourceRead(SourceBase):
     composite_credibility: int | None = None
     is_active: bool
     last_collected_at: datetime | None = None
+    scraper_verified_at: datetime | None = None
     consecutive_failures: int = 0
     created_at: datetime
     updated_at: datetime
-

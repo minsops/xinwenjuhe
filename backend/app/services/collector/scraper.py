@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import random
 from datetime import datetime, timezone
 from urllib import robotparser
@@ -16,6 +17,9 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from app.config import settings
 from app.models.source import Source
 from app.schemas.article import RawArticle
+
+
+logger = logging.getLogger(__name__)
 
 
 class WebScraper:
@@ -99,6 +103,12 @@ class WebScraper:
                         },
                     )
                 )
+        if not articles and source.scraper_config:
+            logger.warning(
+                "Scraper returned 0 articles for %s (%s); selectors may be outdated",
+                source.name,
+                source.scraper_config.get("list_url"),
+            )
         return articles
 
     async def _list_pages(self, list_url: str, config: dict) -> list[str]:

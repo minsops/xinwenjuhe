@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from uuid import UUID
 
 from sqlalchemy import delete, func, select
@@ -18,6 +19,9 @@ from app.services.analyzer.contradiction_detector import ContradictionDetector
 from app.services.analyzer.fact_extractor import FactExtractor
 from app.services.analyzer.narrative_analyzer import NarrativeAnalyzer
 from app.services.clustering.embedder import TextEmbedder
+
+
+logger = logging.getLogger(__name__)
 
 
 class EventAnalysisService:
@@ -101,4 +105,9 @@ class EventAnalysisService:
                         embedding=await embedder.embed_text(content_en),
                     )
                 )
+        if fragments and embedder.is_using_fallback:
+            logger.warning(
+                "Fact fragment embeddings used hash fallback for event %s; semantic analysis quality may be degraded",
+                event_id,
+            )
         return fragments

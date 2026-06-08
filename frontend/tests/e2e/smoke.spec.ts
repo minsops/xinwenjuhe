@@ -19,6 +19,8 @@ test("renders TruthPuzzle dashboard", async ({ page }) => {
   if (await analysisToggle.isVisible()) {
     await analysisToggle.click();
   }
+  await expect(page.getByRole("button", { name: /Re-analyze/ })).toBeVisible();
+  await expect(page.getByText(/v1 ·/)).toBeVisible();
   await expect(page.getByText(/Consensus|共识区/)).toBeVisible();
 });
 

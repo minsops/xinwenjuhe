@@ -17,12 +17,12 @@ class TranslationServiceTest(unittest.TestCase):
     def test_article_translation_cache_key_includes_article_field_and_target(self) -> None:
         key = TranslationService.cache_key("hello", "zh", article_id="article-1", field="title")
 
-        self.assertEqual(key, "translate:article-1:title:zh")
+        self.assertEqual(key, "translate:v1:article-1:title:zh")
 
     def test_text_hash_fallback_cache_key_is_stable(self) -> None:
         key = TranslationService.cache_key("hello", "zh")
 
-        self.assertTrue(key.startswith("translate:"))
+        self.assertTrue(key.startswith("translate:v1:"))
         self.assertTrue(key.endswith(":zh"))
         self.assertNotIn("article-1", key)
 

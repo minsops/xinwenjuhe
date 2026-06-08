@@ -24,13 +24,14 @@ export default function App() {
   const [sort, setSort] = useState<"heat" | "latest">("heat");
   const [focusedArticleId, setFocusedArticleId] = useState<string | undefined>();
   const [highlightedFact, setHighlightedFact] = useState<string | undefined>();
+  const [analysisRefreshKey, setAnalysisRefreshKey] = useState(0);
   const { events, selected, setSelected } = useEvent({
     region: regionFilter || undefined,
     category: categoryFilter || undefined,
     sort,
   });
   const articles = useArticles(selected?.id);
-  const analysis = useAnalysis(selected?.id);
+  const analysis = useAnalysis(selected?.id, analysisRefreshKey);
   const taskOverview = useTaskProgress();
   const live = useEventSocket(selected?.id);
   const filteredEvents = useMemo(
@@ -144,11 +145,13 @@ export default function App() {
               right={analysis ? (
                 <AnalysisPanel
                   analysis={analysis}
+                  eventId={selected?.id}
                   onFactSelect={(articleId, fact) => {
                     setFocusedArticleId(articleId);
                     setHighlightedFact(fact);
                     setActivePane("news");
                   }}
+                  onReanalyze={() => setAnalysisRefreshKey((value) => value + 1)}
                 />
               ) : <div><div className="p-4 text-sm text-stone-500">{text.loadingAnalysis}</div><Skeleton lines={6} /></div>}
             />
