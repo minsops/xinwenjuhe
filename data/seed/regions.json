@@ -1,0 +1,11 @@
+[
+  {"id": "north_america", "name": "North America"},
+  {"id": "europe", "name": "Europe"},
+  {"id": "east_asia", "name": "East Asia"},
+  {"id": "middle_east", "name": "Middle East"},
+  {"id": "south_asia", "name": "South Asia"},
+  {"id": "africa", "name": "Africa"},
+  {"id": "latin_america", "name": "Latin America"},
+  {"id": "russia_cis", "name": "Russia and CIS"}
+]
+
