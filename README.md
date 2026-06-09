@@ -61,7 +61,16 @@ LLM_PROVIDER=openai
 OPENAI_API_KEY=sk-...
 ```
 
-### Option C: Claude
+### Option C: DeepSeek
+
+```env
+LLM_PROVIDER=deepseek
+DEEPSEEK_API_KEY=sk-...
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-v4-pro
+```
+
+### Option D: Claude
 
 ```env
 LLM_PROVIDER=claude

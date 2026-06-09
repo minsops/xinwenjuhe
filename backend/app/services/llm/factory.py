@@ -5,6 +5,7 @@ from __future__ import annotations
 from app.config import settings
 from app.services.llm.base import EchoLLMProvider, LLMProvider
 from app.services.llm.claude_provider import ClaudeProvider
+from app.services.llm.deepseek_provider import DeepSeekProvider
 from app.services.llm.ollama_provider import OllamaProvider
 from app.services.llm.openai_provider import OpenAIProvider
 
@@ -34,12 +35,16 @@ def get_llm_provider() -> LLMProvider:
     providers: list[LLMProvider] = []
     if provider == "openai" and settings.openai_api_key:
         providers.append(OpenAIProvider())
+    if provider == "deepseek" and settings.deepseek_api_key:
+        providers.append(DeepSeekProvider())
     if provider == "claude" and settings.anthropic_api_key:
         providers.append(ClaudeProvider())
     if provider == "ollama":
         providers.append(OllamaProvider())
     if provider != "openai" and settings.openai_api_key:
         providers.append(OpenAIProvider())
+    if provider != "deepseek" and settings.deepseek_api_key:
+        providers.append(DeepSeekProvider())
     if provider != "claude" and settings.anthropic_api_key:
         providers.append(ClaudeProvider())
     if provider != "ollama":
