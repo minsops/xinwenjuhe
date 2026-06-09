@@ -24,6 +24,12 @@ celery.conf.timezone = "UTC"
 celery.conf.task_default_retry_delay = 30
 celery.conf.task_acks_late = True
 celery.conf.worker_prefetch_multiplier = 1
+celery.conf.imports = (
+    "app.tasks.analyze_task",
+    "app.tasks.cluster_task",
+    "app.tasks.collect_task",
+    "app.tasks.credibility_task",
+)
 celery.conf.beat_schedule = {
     "collect-active-sources": {
         "task": "app.tasks.collect_task.collect_active_sources",
