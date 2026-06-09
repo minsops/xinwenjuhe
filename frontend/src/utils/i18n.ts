@@ -14,7 +14,16 @@ const en = {
   latest: "Latest",
   noArticle: "No article selected.",
   source: "Source",
-  translate: "Translate",
+  sourceAgency: "News outlet",
+  sourceCountry: "Country",
+  sourceRegion: "Region",
+  sourceLanguage: "Language",
+  credibility: "Credibility",
+  originalArticle: "Original article",
+  translatedVersion: "Chinese translation",
+  shortContentNotice: "This item only contains a short feed summary.",
+  readFullOriginal: "Open original page",
+  translate: "Translate to Chinese",
   translating: "Translating",
   original: "Original",
   summary: "Summary",
@@ -39,7 +48,21 @@ const en = {
   languages: "languages",
   sourceOrder: "Source order",
   byCredibility: "Credibility",
-  byRegion: "Region"
+  byRegion: "Region",
+  fullReportsFirst: "Full reports first",
+  operationsTitle: "Background tasks",
+  operationsSubtitle: "Collection, clustering, and source scoring.",
+  queueDepth: "Queue",
+  collectSources: "Collect sources",
+  clusterArticles: "Cluster articles",
+  collectHotEvents: "Collect hot events",
+  refreshCredibility: "Refresh credibility",
+  queuedTask: "Queued",
+  recentTasks: "Recent tasks",
+  noRecentTasks: "No recent tasks.",
+  hotStatus: "Hot",
+  activeStatus: "Active",
+  unknown: "Unknown"
 };
 
 export type UiText = typeof en;
@@ -60,9 +83,18 @@ const zh: UiText = {
   latest: "最新",
   noArticle: "未选择文章。",
   source: "原始链接",
-  translate: "翻译",
+  sourceAgency: "新闻机构",
+  sourceCountry: "所属国家",
+  sourceRegion: "地区",
+  sourceLanguage: "语言",
+  credibility: "可信度",
+  originalArticle: "原文报道",
+  translatedVersion: "中文翻译",
+  shortContentNotice: "这条只包含来源摘要，正文较短。",
+  readFullOriginal: "打开原始网页",
+  translate: "翻译成中文",
   translating: "翻译中",
-  original: "查看原文",
+  original: "切回原文",
   summary: "事件概要",
   basedOnReports: "基于 {count} 篇报道",
   consensus: "共识区",
@@ -85,7 +117,21 @@ const zh: UiText = {
   languages: "语言",
   sourceOrder: "来源排序",
   byCredibility: "可信度",
-  byRegion: "地区"
+  byRegion: "地区",
+  fullReportsFirst: "完整报道优先",
+  operationsTitle: "后台任务",
+  operationsSubtitle: "采集新闻、聚类文章、刷新来源可信度。",
+  queueDepth: "队列",
+  collectSources: "采集全部来源",
+  clusterArticles: "聚类新文章",
+  collectHotEvents: "补采热门事件",
+  refreshCredibility: "刷新来源可信度",
+  queuedTask: "已加入队列",
+  recentTasks: "最近任务",
+  noRecentTasks: "暂无最近任务。",
+  hotStatus: "热门",
+  activeStatus: "进行中",
+  unknown: "未知"
 };
 
 export function getUiText(): UiText {
@@ -94,4 +140,59 @@ export function getUiText(): UiText {
 
 export function formatMessage(template: string, values: Record<string, string | number>): string {
   return Object.entries(values).reduce((text, [key, value]) => text.replace(`{${key}}`, String(value)), template);
+}
+
+const zhRegions: Record<string, string> = {
+  north_america: "北美",
+  europe: "欧洲",
+  east_asia: "东亚",
+  middle_east: "中东",
+  south_asia: "南亚",
+  africa: "非洲",
+  latin_america: "拉美",
+  russia_cis: "俄罗斯/独联体",
+  unknown: "未知地区"
+};
+
+const enRegions: Record<string, string> = {
+  north_america: "North America",
+  europe: "Europe",
+  east_asia: "East Asia",
+  middle_east: "Middle East",
+  south_asia: "South Asia",
+  africa: "Africa",
+  latin_america: "Latin America",
+  russia_cis: "Russia/CIS",
+  unknown: "Unknown region"
+};
+
+const zhCountries: Record<string, string> = {
+  "United Kingdom": "英国",
+  Qatar: "卡塔尔",
+  Iran: "伊朗",
+  "United States": "美国",
+  China: "中国",
+  Russia: "俄罗斯",
+  Turkey: "土耳其",
+  Germany: "德国",
+  France: "法国",
+  Japan: "日本",
+  "South Korea": "韩国",
+  India: "印度",
+  Unknown: "未知国家"
+};
+
+function useChineseUi(): boolean {
+  return navigator.language.toLowerCase().startsWith("zh");
+}
+
+export function formatRegion(region?: string | null): string {
+  const key = region || "unknown";
+  const labels = useChineseUi() ? zhRegions : enRegions;
+  return labels[key] ?? key;
+}
+
+export function formatCountry(country?: string | null): string {
+  if (!country) return getUiText().unknown;
+  return useChineseUi() ? zhCountries[country] ?? country : country;
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Article } from "../../types/article";
-import { getUiText } from "../../utils/i18n";
+import { formatCountry, formatRegion, getUiText } from "../../utils/i18n";
 import { CredibilityBadge } from "./CredibilityBadge";
 
 type Props = {
@@ -11,7 +11,8 @@ type Props = {
 
 export function SourceTabs({ articles, selectedId, onSelect }: Props) {
   const text = getUiText();
-  const [mode, setMode] = useState<"credibility" | "region">("credibility");
+  const [mode, setMode] = useState<"readable" | "credibility" | "region">("readable");
+  const sortedByReadable = useMemo(() => articles, [articles]);
   const sortedByCredibility = useMemo(
     () =>
       [...articles].sort((left, right) => {
@@ -38,12 +39,17 @@ export function SourceTabs({ articles, selectedId, onSelect }: Props) {
   const renderButton = (article: Article) => (
     <button
       key={article.id}
-      className={`focus-ring flex h-8 shrink-0 items-center gap-2 rounded px-3 text-sm ${
+      className={`focus-ring flex min-w-48 shrink-0 items-center justify-between gap-3 rounded border px-3 py-2 text-left text-sm ${
         selectedId === article.id ? "bg-civic text-white" : "bg-stone-100 text-stone-800 dark:bg-stone-800 dark:text-stone-100"
       }`}
       onClick={() => onSelect(article.id)}
     >
-      <span>{article.source?.name ?? article.source_id.slice(0, 8)}</span>
+      <span className="min-w-0">
+        <span className="block truncate font-medium">{article.source?.name ?? article.source_id.slice(0, 8)}</span>
+        <span className={`block truncate text-xs ${selectedId === article.id ? "text-cyan-50" : "text-stone-500 dark:text-stone-400"}`}>
+          {formatCountry(article.source?.country)} / {formatRegion(article.source?.region)}
+        </span>
+      </span>
       <CredibilityBadge score={article.source?.composite_credibility} />
     </button>
   );
@@ -52,7 +58,10 @@ export function SourceTabs({ articles, selectedId, onSelect }: Props) {
     <div className="border-b border-stone-300 dark:border-stone-700">
       <div className="flex items-center justify-between gap-3 px-3 py-2">
         <span className="text-xs font-medium uppercase text-stone-500 dark:text-stone-400">{text.sourceOrder}</span>
-        <div className="grid grid-cols-2 rounded border border-stone-300 p-0.5 text-xs dark:border-stone-700">
+        <div className="grid grid-cols-3 rounded border border-stone-300 p-0.5 text-xs dark:border-stone-700">
+          <button className={`rounded px-2 py-1 ${mode === "readable" ? "bg-civic text-white" : ""}`} onClick={() => setMode("readable")}>
+            {text.fullReportsFirst}
+          </button>
           <button className={`rounded px-2 py-1 ${mode === "credibility" ? "bg-civic text-white" : ""}`} onClick={() => setMode("credibility")}>
             {text.byCredibility}
           </button>
@@ -61,13 +70,15 @@ export function SourceTabs({ articles, selectedId, onSelect }: Props) {
           </button>
         </div>
       </div>
-      {mode === "credibility" ? (
+      {mode === "readable" ? (
+        <div className="flex gap-2 overflow-x-auto px-3 pb-2">{sortedByReadable.map(renderButton)}</div>
+      ) : mode === "credibility" ? (
         <div className="flex gap-1 overflow-x-auto px-3 pb-2">{sortedByCredibility.map(renderButton)}</div>
       ) : (
         <div className="flex gap-3 overflow-x-auto px-3 pb-2">
           {groupedByRegion.map(([region, rows]) => (
             <div key={region} className="flex shrink-0 items-center gap-1">
-              <span className="mr-1 text-xs uppercase text-stone-500 dark:text-stone-400">{region}</span>
+              <span className="mr-1 text-xs text-stone-500 dark:text-stone-400">{formatRegion(region)}</span>
               {rows.map(renderButton)}
             </div>
           ))}

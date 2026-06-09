@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     search_engine_url: str | None = None
     search_engine_api_key: str | None = None
-    backend_cors_origins: str = "http://localhost:3000"
+    backend_cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
 
     llm_provider: str = "ollama"
     openai_api_key: str | None = None

@@ -11,10 +11,30 @@ export function useArticles(eventId?: string) {
       setArticles(demoArticles());
       return;
     }
-    fetchEventArticles(eventId).then(setArticles).catch(() => setArticles(demoArticles()));
+    fetchEventArticles(eventId).then((rows) => setArticles(sortReadableArticles(rows))).catch(() => setArticles(demoArticles()));
   }, [eventId]);
 
   return articles;
+}
+
+function sortReadableArticles(articles: Article[]): Article[] {
+  return [...articles].sort((left, right) => articleReadabilityScore(right) - articleReadabilityScore(left) || publishedMs(right) - publishedMs(left));
+}
+
+function articleReadabilityScore(article: Article): number {
+  const source = article.source;
+  const contentLength = article.content_original.trim().length;
+  let score = Math.min(contentLength, 1200);
+  if (contentLength >= 220) score += 500;
+  if (source?.name && source.name !== "news.google.com") score += 350;
+  if (source?.country && source.country !== "Unknown") score += 180;
+  if (source?.region && source.region !== "unknown") score += 120;
+  if (article.author) score += 40;
+  return score;
+}
+
+function publishedMs(article: Article): number {
+  return article.published_at ? new Date(article.published_at).getTime() : 0;
 }
 
 function demoArticles(): Article[] {

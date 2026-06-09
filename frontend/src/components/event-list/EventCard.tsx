@@ -22,7 +22,7 @@ export function EventCard({ event, selected, onSelect }: Props) {
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">{event.title}</h3>
         <div className="flex shrink-0 items-center gap-2">
-          {hot ? <span className="h-2 w-2 animate-pulse rounded-full bg-red-600" title="Hot event" /> : null}
+          {hot ? <span className="h-2 w-2 animate-pulse rounded-full bg-red-600" title={text.hotStatus} /> : null}
           <Badge tone={hot ? "red" : "blue"}>{Math.round(event.heat_score)}</Badge>
         </div>
       </div>

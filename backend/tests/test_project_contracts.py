@@ -222,6 +222,7 @@ class ProjectContractsTest(unittest.TestCase):
         self.assertIn("/dead-letters", tasks_api)
         self.assertIn("record_source_alert", progress)
         self.assertIn("source_alerts", progress)
+        self.assertIn("http://127.0.0.1:3000", config)
         self.assertIn("/source-alerts", tasks_api)
         self.assertIn("collection_failure_threshold", ingestion)
         self.assertIn('"status": "failed"', ingestion)

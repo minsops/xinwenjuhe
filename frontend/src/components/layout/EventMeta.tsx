@@ -13,7 +13,7 @@ export function EventMeta({ event }: Props) {
     <section className="border-b border-stone-300 bg-white px-4 py-3 dark:border-stone-700 dark:bg-stone-900">
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="text-xl font-semibold">{event.title}</h1>
-        <Badge tone={hot ? "red" : "blue"}>{hot ? "Hot" : event.status}</Badge>
+        <Badge tone={hot ? "red" : "blue"}>{hot ? text.hotStatus : statusLabel(event.status, text.activeStatus)}</Badge>
       </div>
       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-stone-600 dark:text-stone-300">
         <span>{event.source_count} {text.sources}</span>
@@ -23,4 +23,8 @@ export function EventMeta({ event }: Props) {
       </div>
     </section>
   );
+}
+
+function statusLabel(status: string, activeLabel: string): string {
+  return status === "active" ? activeLabel : status;
 }

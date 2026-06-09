@@ -12,7 +12,7 @@ import { useArticles } from "./hooks/useArticles";
 import { useEventSocket } from "./hooks/useEventSocket";
 import { useEvent } from "./hooks/useEvent";
 import { useTaskProgress } from "./hooks/useTaskProgress";
-import { getUiText } from "./utils/i18n";
+import { formatRegion, getUiText } from "./utils/i18n";
 
 export default function App() {
   const text = getUiText();
@@ -92,14 +92,14 @@ export default function App() {
                   onChange={(event) => setRegionFilter(event.target.value)}
                 >
                   <option value="">{text.allRegions}</option>
-                  <option value="north_america">North America</option>
-                  <option value="europe">Europe</option>
-                  <option value="east_asia">East Asia</option>
-                  <option value="middle_east">Middle East</option>
-                  <option value="south_asia">South Asia</option>
-                  <option value="africa">Africa</option>
-                  <option value="latin_america">Latin America</option>
-                  <option value="russia_cis">Russia/CIS</option>
+                  <option value="north_america">{formatRegion("north_america")}</option>
+                  <option value="europe">{formatRegion("europe")}</option>
+                  <option value="east_asia">{formatRegion("east_asia")}</option>
+                  <option value="middle_east">{formatRegion("middle_east")}</option>
+                  <option value="south_asia">{formatRegion("south_asia")}</option>
+                  <option value="africa">{formatRegion("africa")}</option>
+                  <option value="latin_america">{formatRegion("latin_america")}</option>
+                  <option value="russia_cis">{formatRegion("russia_cis")}</option>
                 </select>
                 <select
                   aria-label="Filter by category"

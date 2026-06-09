@@ -33,8 +33,7 @@ export function NewsPanel({ articles, selectedArticleId, highlightedFact, onArti
     if (!selected) return;
     setLoading(true);
     try {
-      const targetLang = navigator.language?.split("-")[0] || "en";
-      const result = await translateArticle(selected.id, targetLang);
+      const result = await translateArticle(selected.id, "zh");
       setTranslatedText({ title: result.title, content: result.content });
       setTranslated(true);
     } finally {

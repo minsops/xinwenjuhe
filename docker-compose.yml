@@ -43,6 +43,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:password@db:5432/truthpuzzle
       REDIS_URL: redis://redis:6379/0
       SEARCH_ENGINE_URL: http://meilisearch:7700
+      BACKEND_CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
     depends_on:
       db:
         condition: service_healthy
@@ -72,6 +73,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:password@db:5432/truthpuzzle
       REDIS_URL: redis://redis:6379/0
       SEARCH_ENGINE_URL: http://meilisearch:7700
+      BACKEND_CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
     depends_on:
       backend:
         condition: service_healthy
@@ -90,6 +92,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:password@db:5432/truthpuzzle
       REDIS_URL: redis://redis:6379/0
       SEARCH_ENGINE_URL: http://meilisearch:7700
+      BACKEND_CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
     depends_on:
       backend:
         condition: service_healthy
