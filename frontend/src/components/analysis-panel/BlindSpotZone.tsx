@@ -19,7 +19,7 @@ export function BlindSpotZone({ items }: Props) {
         {items.length ? items.map((item) => (
           <div key={item.description} className="rounded border border-red-200 bg-red-50 p-3 text-sm dark:border-red-900 dark:bg-red-950">
             <div>{item.description}</div>
-            {item.total ? <div className="mt-2"><Badge tone="red">{item.mentioned_by}/{item.total} sources</Badge></div> : null}
+            {item.total ? <div className="mt-2"><Badge tone="red">{item.mentioned_by}/{item.total} 个来源</Badge></div> : null}
           </div>
         )) : <p className="text-sm text-stone-500">{text.noBlindSpots}</p>}
       </div>

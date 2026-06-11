@@ -18,7 +18,6 @@ export default function App() {
   const text = getUiText();
   const [darkMode, setDarkMode] = useState(false);
   const [search, setSearch] = useState("");
-  const [activePane, setActivePane] = useState<"news" | "analysis">("news");
   const [regionFilter, setRegionFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [sort, setSort] = useState<"heat" | "latest">("heat");
@@ -125,13 +124,19 @@ export default function App() {
                 {live.message.type ?? "event_update"}
               </div>
             ) : null}
-            <div className="grid grid-cols-2 border-b border-stone-300 bg-white p-2 dark:border-stone-700 dark:bg-stone-900 lg:hidden">
-              <button className={`rounded px-3 py-2 text-sm ${activePane === "news" ? "bg-civic text-white" : ""}`} onClick={() => setActivePane("news")}>{text.news}</button>
-              <button className={`rounded px-3 py-2 text-sm ${activePane === "analysis" ? "bg-civic text-white" : ""}`} onClick={() => setActivePane("analysis")}>{text.analysis}</button>
-            </div>
             <DualPanelLayout
-              activePane={activePane}
-              left={
+              left={analysis ? (
+                <AnalysisPanel
+                  analysis={analysis}
+                  eventId={selected?.id}
+                  onFactSelect={(articleId, fact) => {
+                    setFocusedArticleId(articleId);
+                    setHighlightedFact(fact);
+                  }}
+                  onReanalyze={() => setAnalysisRefreshKey((value) => value + 1)}
+                />
+              ) : <div><div className="p-4 text-sm text-stone-500">{text.loadingAnalysis}</div><Skeleton lines={6} /></div>}
+              right={
                 <NewsPanel
                   articles={articles}
                   selectedArticleId={focusedArticleId}
@@ -142,18 +147,6 @@ export default function App() {
                   }}
                 />
               }
-              right={analysis ? (
-                <AnalysisPanel
-                  analysis={analysis}
-                  eventId={selected?.id}
-                  onFactSelect={(articleId, fact) => {
-                    setFocusedArticleId(articleId);
-                    setHighlightedFact(fact);
-                    setActivePane("news");
-                  }}
-                  onReanalyze={() => setAnalysisRefreshKey((value) => value + 1)}
-                />
-              ) : <div><div className="p-4 text-sm text-stone-500">{text.loadingAnalysis}</div><Skeleton lines={6} /></div>}
             />
           </div>
         </div>

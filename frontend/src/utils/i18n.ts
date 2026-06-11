@@ -135,7 +135,7 @@ const zh: UiText = {
 };
 
 export function getUiText(): UiText {
-  return navigator.language.toLowerCase().startsWith("zh") ? zh : en;
+  return zh;
 }
 
 export function formatMessage(template: string, values: Record<string, string | number>): string {
@@ -183,7 +183,7 @@ const zhCountries: Record<string, string> = {
 };
 
 function useChineseUi(): boolean {
-  return navigator.language.toLowerCase().startsWith("zh");
+  return true;
 }
 
 export function formatRegion(region?: string | null): string {

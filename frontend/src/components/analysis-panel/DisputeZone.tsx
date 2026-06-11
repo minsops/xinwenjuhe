@@ -20,12 +20,33 @@ export function DisputeZone({ items }: Props) {
           <div key={item.topic} className="rounded border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950">
             <div>{item.topic}</div>
             <div className="mt-2 flex gap-2">
-              {item.type ? <Badge tone="yellow">{item.type}</Badge> : null}
-              {item.severity ? <Badge tone="red">{item.severity}</Badge> : null}
+              {item.type ? <Badge tone="yellow">{formatDisputeType(item.type)}</Badge> : null}
+              {item.severity ? <Badge tone="red">{formatSeverity(item.severity)}</Badge> : null}
             </div>
           </div>
         )) : <p className="text-sm text-stone-500">{text.noDisputes}</p>}
       </div>
     </section>
   );
+}
+
+function formatDisputeType(type: string): string {
+  const labels: Record<string, string> = {
+    number_discrepancy: "数字不一致",
+    attribution_conflict: "责任归属冲突",
+    timeline_conflict: "时间线冲突",
+    omission: "信息遗漏",
+    framing_difference: "叙事框架差异"
+  };
+  return labels[type] ?? type;
+}
+
+function formatSeverity(severity: string): string {
+  const labels: Record<string, string> = {
+    critical: "严重",
+    high: "高",
+    medium: "中",
+    low: "低"
+  };
+  return labels[severity] ?? severity;
 }

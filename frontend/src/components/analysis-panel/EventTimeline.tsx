@@ -19,7 +19,7 @@ export function EventTimeline({ items = [] }: Props) {
           {visible.map((item, index) => (
             <li key={`${item.timestamp ?? "untimed"}-${index}`} className="grid grid-cols-[7rem_1fr] gap-3 text-sm">
               <time className="text-xs text-stone-500">
-                {item.timestamp ? new Date(item.timestamp).toLocaleString(undefined, { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : "--"}
+                {item.timestamp ? new Date(item.timestamp).toLocaleString("zh-CN", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : "--"}
               </time>
               <div className="border-l border-stone-300 pl-3 dark:border-stone-700">
                 <p className="leading-6 text-stone-800 dark:text-stone-100">{item.fact}</p>

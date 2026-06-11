@@ -25,7 +25,7 @@ class ConsensusMapper:
 3. 不使用任何带有立场倾向的形容词
 4. 不做任何因果推断
 5. 字数控制在 200 字以内
-6. 使用英文撰写
+6. 使用中文撰写
 
 共识事实：
 {consensus_json}
@@ -128,7 +128,7 @@ class ConsensusMapper:
             )
             summary = (
                 await self.llm.complete(
-                    "You are a neutral news editor summarizing cross-source event facts.",
+                    "你是一个中立的中文新闻编辑，负责总结跨来源事件事实。",
                     prompt,
                 )
             ).strip()
@@ -142,10 +142,10 @@ class ConsensusMapper:
     def _fallback_summary(consensus: list[dict], disputed: list[dict], total: int) -> str:
         """Return a deterministic summary when no LLM provider is available."""
         if consensus:
-            return f"Based on {total} source(s), the strongest common fact is: {consensus[0]['fact']}"
+            return f"基于 {total} 个来源，目前最稳定的共同事实是：{consensus[0]['fact']}"
         if disputed:
-            return f"Sources describe the event with unresolved dispute: {disputed[0]['topic']}"
-        return "Insufficient cross-source evidence is available for a stable event summary."
+            return f"不同来源对事件仍存在未解决争议：{disputed[0]['topic']}"
+        return "目前缺少足够的跨来源证据，暂不能形成稳定事件概要。"
 
     @staticmethod
     def _cosine(left: list[float], right: list[float]) -> float:

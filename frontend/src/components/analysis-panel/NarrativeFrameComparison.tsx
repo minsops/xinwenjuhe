@@ -17,9 +17,10 @@ export function NarrativeFrameComparison({ frames }: Props) {
       <div className="space-y-2">
         {frames.length ? frames.map((frame, index) => {
           const tags = Array.isArray(frame.frames) ? frame.frames.map(String) : ["news_report"];
+          const sourceName = String(frame.source_name ?? frame.source_id ?? `来源 ${index + 1}`);
           return (
             <details key={index} className="rounded border border-stone-200 p-3 text-sm dark:border-stone-700">
-              <summary className="cursor-pointer">{String(frame.source_id ?? `Source ${index + 1}`)}</summary>
+              <summary className="cursor-pointer">{sourceName}</summary>
               <div className="mt-2 flex flex-wrap gap-2">{tags.map((tag) => <Badge key={tag} tone="blue">{tag}</Badge>)}</div>
             </details>
           );

@@ -37,7 +37,7 @@ export function SourceGraph({ graph }: Props) {
           <div className="flex flex-wrap gap-2">
             {sources.map((source) => (
               <span key={source.id} className="max-w-full truncate rounded border border-civic/30 bg-civic/10 px-2 py-1 text-xs text-civic dark:text-cyan-200">
-                {source.id}
+                {source.label ?? source.name ?? source.id}
               </span>
             ))}
           </div>

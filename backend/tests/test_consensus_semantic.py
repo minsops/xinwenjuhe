@@ -91,7 +91,7 @@ class ConsensusSemanticTest(unittest.TestCase):
             )
         )
 
-        self.assertTrue(summary.startswith("Based on 2 source(s)"))
+        self.assertTrue(summary.startswith("基于 2 个来源"))
 
 
 def _fragment(

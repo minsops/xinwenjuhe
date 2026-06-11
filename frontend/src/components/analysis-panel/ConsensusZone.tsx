@@ -24,7 +24,7 @@ export function ConsensusZone({ items, onFactSelect }: Props) {
             onClick={() => item.article_ids?.[0] ? onFactSelect?.(item.article_ids[0], item.fact) : undefined}
           >
             <div>{item.fact}</div>
-            <div className="mt-2"><Badge tone="green">{item.confirmed_by}/{item.total} sources</Badge></div>
+            <div className="mt-2"><Badge tone="green">{item.confirmed_by}/{item.total} 个来源</Badge></div>
           </button>
         )) : <p className="text-sm text-stone-500">{text.noConsensus}</p>}
       </div>

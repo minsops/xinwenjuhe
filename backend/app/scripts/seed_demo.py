@@ -14,7 +14,8 @@ from app.models.event import Event
 from app.models.source import Source
 
 
-DEMO_TITLE = "Cross-border incident draws conflicting casualty reports"
+DEMO_TITLE_EN = "Cross-border incident draws conflicting casualty reports"
+DEMO_TITLE_ZH = "边境事件出现相互矛盾的伤亡报道"
 DEMO_SOURCE_ALIASES = {
     "Reuters": ("Reuters",),
     "Al Jazeera": ("Al Jazeera", "半岛电视台"),
@@ -25,10 +26,20 @@ DEMO_SOURCE_ALIASES = {
 async def seed_demo() -> dict:
     """Insert demo event data once and return inserted or existing counts."""
     async with AsyncSessionLocal() as session:
-        existing = await session.scalar(select(Event).where(Event.title == DEMO_TITLE))
+        existing = await session.scalar(
+            select(Event).where(
+                or_(
+                    Event.title == DEMO_TITLE_ZH,
+                    Event.title == DEMO_TITLE_EN,
+                    Event.title_en == DEMO_TITLE_EN,
+                )
+            )
+        )
         if existing:
             sources = await _demo_sources(session)
             updated = await _sync_demo_articles(session, existing.id, sources)
+            await session.flush()
+            updated += await _sync_demo_analysis(session, existing.id, sources)
             article_count = await session.scalar(
                 select(func.count()).select_from(Article).where(Article.event_id == existing.id)
             )
@@ -38,9 +49,9 @@ async def seed_demo() -> dict:
         sources = await _demo_sources(session)
         now = datetime.now(timezone.utc)
         event = Event(
-            title=DEMO_TITLE,
-            title_en=DEMO_TITLE,
-            summary="Multiple outlets report the same incident while disagreeing on numbers and attribution.",
+            title=DEMO_TITLE_ZH,
+            title_en=DEMO_TITLE_EN,
+            summary="多家媒体确认发生同一边境事件，但在伤亡数字和责任归属上存在明显分歧。",
             category="conflict",
             region_primary="middle_east",
             regions_involved=["middle_east", "europe", "north_america"],
@@ -61,79 +72,7 @@ async def seed_demo() -> dict:
         session.add_all(articles)
         await session.flush()
 
-        analysis = EventAnalysis(
-            event_id=event.id,
-            summary=(
-                "Available reports agree that an overnight border incident occurred and emergency crews responded. "
-                "Sources differ on casualty figures and responsibility claims, with independent verification still limited."
-            ),
-            consensus_facts=[
-                {
-                    "fact": "An overnight incident occurred and local authorities responded.",
-                    "confirmed_by": 3,
-                    "total": 3,
-                    "source_ids": [str(source.id) for source in sources.values()],
-                    "article_ids": [str(article.id) for article in articles[:2]],
-                }
-            ],
-            disputed_facts=[
-                {
-                    "topic": "Casualty count differs between 12 and more than 200.",
-                    "type": "number_discrepancy",
-                    "severity": "critical",
-                    "details": {
-                        "values": [
-                            {"source": "Reuters", "value": 12},
-                            {"source": "IRNA", "value": 200},
-                        ]
-                    },
-                },
-                {
-                    "topic": "Sources disagree over who was responsible for the incident.",
-                    "type": "attribution_conflict",
-                    "severity": "high",
-                },
-            ],
-            blind_spots=[
-                {
-                    "description": "Independent on-site verification is absent from most reports.",
-                    "mentioned_by": 1,
-                    "total": 3,
-                }
-            ],
-            narrative_frames=[
-                {"source_id": str(sources["Reuters"].id), "frames": ["official uncertainty"], "tone": "neutral"},
-                {"source_id": str(sources["Al Jazeera"].id), "frames": ["regional dispute"], "tone": "neutral"},
-                {"source_id": str(sources["IRNA"].id), "frames": ["attack attribution"], "tone": "hostile"},
-            ],
-            source_graph={
-                "nodes": [
-                    {"id": str(source.id), "type": "source"}
-                    for source in sources.values()
-                ],
-                "edges": [
-                    {"from": str(article.source_id), "to": str(article.id), "type": "reported"}
-                    for article in articles
-                ],
-            },
-            timeline=[
-                {
-                    "timestamp": articles[0].published_at.isoformat(),
-                    "fact": "Initial reports described an overnight incident.",
-                    "fragment_type": "what",
-                    "article_id": str(articles[0].id),
-                    "source_id": str(articles[0].source_id),
-                },
-                {
-                    "timestamp": articles[2].published_at.isoformat(),
-                    "fact": "Later reports issued a higher casualty claim.",
-                    "fragment_type": "number",
-                    "article_id": str(articles[2].id),
-                    "source_id": str(articles[2].source_id),
-                },
-            ],
-            article_count_at_analysis=3,
-        )
+        analysis = EventAnalysis(**_demo_analysis_payload(event.id, sources, articles))
         session.add(analysis)
         await session.commit()
         return {"status": "seeded", "event_id": str(event.id), "articles": len(articles)}
@@ -233,6 +172,12 @@ async def _sync_demo_articles(session, event_id, sources: dict[str, Source]) -> 
         updated += 1
     event = await session.get(Event, event_id)
     if event:
+        event.title = DEMO_TITLE_ZH
+        event.title_en = DEMO_TITLE_EN
+        event.summary = "多家媒体确认发生同一边境事件，但在伤亡数字和责任归属上存在明显分歧。"
+        event.category = "conflict"
+        event.region_primary = "middle_east"
+        event.status = "active"
         event.article_count = 3
         event.source_count = 3
         event.language_count = 2
@@ -242,6 +187,108 @@ async def _sync_demo_articles(session, event_id, sources: dict[str, Source]) -> 
         event.first_reported_at = now - timedelta(hours=8)
         event.last_updated_at = now - timedelta(hours=1)
     return updated
+
+
+async def _sync_demo_analysis(session, event_id, sources: dict[str, Source]) -> int:
+    articles = (
+        await session.execute(
+            select(Article).where(
+                Article.event_id == event_id,
+                Article.external_url.in_([article.external_url for article in _demo_articles(sources, event_id, datetime.now(timezone.utc))]),
+            )
+        )
+    ).scalars().all()
+    if len(articles) < 3:
+        return 0
+    existing = await session.scalar(select(EventAnalysis).where(EventAnalysis.event_id == event_id))
+    payload = _demo_analysis_payload(event_id, sources, articles)
+    if existing:
+        for key, value in payload.items():
+            if key != "event_id":
+                setattr(existing, key, value)
+        return 1
+    session.add(EventAnalysis(**payload))
+    return 1
+
+
+def _demo_analysis_payload(event_id, sources: dict[str, Source], articles: list[Article]) -> dict:
+    by_url = {article.external_url: article for article in articles}
+    ordered_articles = [
+        by_url["https://demo.truthpuzzle.local/reuters/overnight-strike"],
+        by_url["https://demo.truthpuzzle.local/aljazeera/border-incident"],
+        by_url["https://demo.truthpuzzle.local/irna/casualty-claim"],
+    ]
+    return {
+        "event_id": event_id,
+        "summary": (
+            "三家来源都确认夜间发生边境事件，并提到当地救援或应急力量介入。"
+            "主要分歧集中在两个方面：伤亡规模从 12 人到 200 多人不等，责任归属也没有被独立证据确认。"
+            "目前更稳妥的判断是：事件存在，但数字和归责都仍需更多现场证据。"
+        ),
+        "consensus_facts": [
+            {
+                "fact": "夜间发生边境事件，当地应急力量随后介入。",
+                "confirmed_by": 3,
+                "total": 3,
+                "source_ids": [str(source.id) for source in sources.values()],
+                "article_ids": [str(article.id) for article in ordered_articles],
+            }
+        ],
+        "disputed_facts": [
+            {
+                "topic": "伤亡或受影响人数存在明显差异：Reuters 报道 12 人，IRNA 称超过 200 人受影响。",
+                "type": "number_discrepancy",
+                "severity": "critical",
+                "details": {
+                    "values": [
+                        {"source": "Reuters", "value": 12},
+                        {"source": "IRNA", "value": 200},
+                    ]
+                },
+            },
+            {
+                "topic": "不同来源对责任归属使用了不同表述，尚缺少独立证据确认谁应负责。",
+                "type": "attribution_conflict",
+                "severity": "high",
+            },
+        ],
+        "blind_spots": [
+            {
+                "description": "多数报道缺少独立现场核验、医院记录或可公开验证的调查材料。",
+                "mentioned_by": 1,
+                "total": 3,
+            }
+        ],
+        "narrative_frames": [
+            {"source_id": str(sources["Reuters"].id), "source_name": "Reuters", "frames": ["官方仍不确定", "谨慎措辞"], "tone": "中性"},
+            {"source_id": str(sources["Al Jazeera"].id), "source_name": "半岛电视台", "frames": ["地区责任争议", "核验不足"], "tone": "中性"},
+            {"source_id": str(sources["IRNA"].id), "source_name": "IRNA", "frames": ["攻击归责", "高伤亡主张"], "tone": "强烈归责"},
+        ],
+        "source_graph": {
+            "nodes": [{"id": str(source.id), "label": source.name, "type": "source"} for source in sources.values()],
+            "edges": [
+                {"from": str(article.source_id), "to": str(article.id), "type": "reported"}
+                for article in ordered_articles
+            ],
+        },
+        "timeline": [
+            {
+                "timestamp": ordered_articles[0].published_at.isoformat(),
+                "fact": "最早报道确认夜间发生边境事件，并提到救援力量介入。",
+                "fragment_type": "事件",
+                "article_id": str(ordered_articles[0].id),
+                "source_id": str(ordered_articles[0].source_id),
+            },
+            {
+                "timestamp": ordered_articles[2].published_at.isoformat(),
+                "fact": "后续报道提出更高的受影响人数，但该数字尚未被独立核验。",
+                "fragment_type": "数字",
+                "article_id": str(ordered_articles[2].id),
+                "source_id": str(ordered_articles[2].source_id),
+            },
+        ],
+        "article_count_at_analysis": 3,
+    }
 
 
 async def _demo_sources(session) -> dict[str, Source]:

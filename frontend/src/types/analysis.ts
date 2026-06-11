@@ -16,7 +16,7 @@ export type EventAnalysis = {
     source_id?: string;
   }>;
   source_graph?: {
-    nodes?: Array<{ id: string; type?: string; severity?: string }>;
+    nodes?: Array<{ id: string; label?: string; name?: string; type?: string; severity?: string }>;
     edges?: Array<{ from: string; to: string; type?: string; severity?: string; fragment_type?: string }>;
   };
 };
