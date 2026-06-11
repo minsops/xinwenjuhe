@@ -1,6 +1,7 @@
 services:
   db:
     image: pgvector/pgvector:pg16
+    restart: unless-stopped
     environment:
       POSTGRES_DB: truthpuzzle
       POSTGRES_USER: postgres
@@ -17,6 +18,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     ports:
       - "6379:6379"
     healthcheck:
@@ -27,6 +29,7 @@ services:
 
   meilisearch:
     image: getmeili/meilisearch:v1.13
+    restart: unless-stopped
     environment:
       MEILI_NO_ANALYTICS: "true"
     ports:
@@ -38,6 +41,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    restart: unless-stopped
     env_file: .env
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:password@db:5432/truthpuzzle
@@ -68,6 +72,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    restart: unless-stopped
     env_file: .env
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:password@db:5432/truthpuzzle
@@ -87,6 +92,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    restart: unless-stopped
     env_file: .env
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:password@db:5432/truthpuzzle
@@ -104,6 +110,7 @@ services:
 
   frontend:
     build: ./frontend
+    restart: unless-stopped
     environment:
       VITE_API_BASE_URL: http://localhost:8000
       VITE_WS_URL: ws://localhost:8000
@@ -120,6 +127,7 @@ services:
 
   ollama:
     image: ollama/ollama:latest
+    restart: unless-stopped
     profiles: ["ollama"]
     ports:
       - "11434:11434"
