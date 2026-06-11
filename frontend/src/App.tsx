@@ -37,6 +37,20 @@ export default function App() {
     () => events.filter((event) => event.title.toLowerCase().includes(search.toLowerCase())),
     [events, search]
   );
+  const sourceLabels = useMemo(
+    () =>
+      Object.fromEntries(
+        articles
+          .filter((article) => article.source)
+          .map((article) => [
+            article.source_id,
+            article.source?.name_en && article.source.name_en !== article.source.name
+              ? `${article.source.name} / ${article.source.name_en}`
+              : article.source?.name ?? article.source_id,
+          ])
+      ),
+    [articles]
+  );
 
   return (
     <div className={darkMode ? "dark" : ""}>
@@ -129,6 +143,7 @@ export default function App() {
                 <AnalysisPanel
                   analysis={analysis}
                   eventId={selected?.id}
+                  sourceLabels={sourceLabels}
                   onFactSelect={(articleId, fact) => {
                     setFocusedArticleId(articleId);
                     setHighlightedFact(fact);

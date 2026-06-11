@@ -4,9 +4,10 @@ import { Badge } from "../shared/Badge";
 
 type Props = {
   frames: Array<Record<string, unknown>>;
+  sourceLabels?: Record<string, string>;
 };
 
-export function NarrativeFrameComparison({ frames }: Props) {
+export function NarrativeFrameComparison({ frames, sourceLabels = {} }: Props) {
   const text = getUiText();
   return (
     <section className="p-4">
@@ -17,7 +18,8 @@ export function NarrativeFrameComparison({ frames }: Props) {
       <div className="space-y-2">
         {frames.length ? frames.map((frame, index) => {
           const tags = Array.isArray(frame.frames) ? frame.frames.map(String) : ["news_report"];
-          const sourceName = String(frame.source_name ?? frame.source_id ?? `来源 ${index + 1}`);
+          const sourceId = String(frame.source_id ?? "");
+          const sourceName = sourceLabels[sourceId] ?? String(frame.source_name ?? frame.source_id ?? `来源 ${index + 1}`);
           return (
             <details key={index} className="rounded border border-stone-200 p-3 text-sm dark:border-stone-700">
               <summary className="cursor-pointer">{sourceName}</summary>

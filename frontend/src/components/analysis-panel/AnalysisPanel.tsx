@@ -13,11 +13,12 @@ import { SourceGraph } from "./SourceGraph";
 type Props = {
   analysis: EventAnalysis;
   eventId?: string;
+  sourceLabels?: Record<string, string>;
   onFactSelect?: (articleId: string, fact: string) => void;
   onReanalyze?: () => void;
 };
 
-export function AnalysisPanel({ analysis, eventId, onFactSelect, onReanalyze }: Props) {
+export function AnalysisPanel({ analysis, eventId, sourceLabels = {}, onFactSelect, onReanalyze }: Props) {
   const [running, setRunning] = useState(false);
 
   async function handleReanalyze() {
@@ -55,8 +56,8 @@ export function AnalysisPanel({ analysis, eventId, onFactSelect, onReanalyze }: 
       <DisputeZone items={analysis.disputed_facts} />
       <BlindSpotZone items={analysis.blind_spots} />
       <EventTimeline items={analysis.timeline} />
-      <SourceGraph graph={analysis.source_graph} />
-      <NarrativeFrameComparison frames={analysis.narrative_frames} />
+      <SourceGraph graph={analysis.source_graph} sourceLabels={sourceLabels} />
+      <NarrativeFrameComparison frames={analysis.narrative_frames} sourceLabels={sourceLabels} />
     </aside>
   );
 }

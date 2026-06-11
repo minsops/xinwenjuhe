@@ -3,9 +3,10 @@ import { getUiText } from "../../utils/i18n";
 
 type Props = {
   graph?: EventAnalysis["source_graph"];
+  sourceLabels?: Record<string, string>;
 };
 
-export function SourceGraph({ graph }: Props) {
+export function SourceGraph({ graph, sourceLabels = {} }: Props) {
   const text = getUiText();
   const nodes = graph?.nodes ?? [];
   const edges = graph?.edges ?? [];
@@ -37,7 +38,7 @@ export function SourceGraph({ graph }: Props) {
           <div className="flex flex-wrap gap-2">
             {sources.map((source) => (
               <span key={source.id} className="max-w-full truncate rounded border border-civic/30 bg-civic/10 px-2 py-1 text-xs text-civic dark:text-cyan-200">
-                {source.label ?? source.name ?? source.id}
+                {sourceLabels[source.id] ?? source.label ?? source.name ?? source.id}
               </span>
             ))}
           </div>
