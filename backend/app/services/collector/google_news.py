@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from urllib.parse import quote_plus, urlparse
 
 import feedparser
@@ -14,6 +15,9 @@ from app.services.collector.rss_collector import RSSCollector
 
 class GoogleNewsCollector:
     """Collect and search Google News RSS editions across languages."""
+
+    FULLTEXT_CONCURRENCY = 5
+    MIN_FULLTEXT_LENGTH = 200
 
     REGION_FEEDS = {
         "en-US": "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en",
@@ -85,7 +89,7 @@ class GoogleNewsCollector:
         "fil-PH": "https://news.google.com/rss?hl=fil&gl=PH&ceid=PH:fil",
     }
 
-    async def search_event(self, query: str, language: str) -> list[RawArticle]:
+    async def search_event(self, query: str, language: str, fetch_fulltext: bool = True) -> list[RawArticle]:
         """Search Google News RSS by query and language."""
         feed = self.feed_for_language(language)
         url = feed.replace("/rss?", f"/rss/search?q={quote_plus(query)}&")
@@ -94,19 +98,37 @@ class GoogleNewsCollector:
             response.raise_for_status()
         parsed = feedparser.parse(response.content)
         parser = RSSCollector()
-        articles = []
-        for entry in parsed.entries:
+        entries = list(parsed.entries)
+
+        async def parse_entry(entry) -> RawArticle:
             link = await self.resolve_google_link(getattr(entry, "link", ""))
-            articles.append(
-                RawArticle(
-                    external_url=link,
-                    title_original=getattr(entry, "title", "Untitled"),
-                    content_original=getattr(entry, "summary", ""),
-                    language=language,
-                    published_at=parser._parse_date(getattr(entry, "published", None)),
-                    metadata={"google_news": True},
-                )
+            return RawArticle(
+                external_url=link,
+                title_original=getattr(entry, "title", "Untitled"),
+                content_original=getattr(entry, "summary", ""),
+                language=language,
+                published_at=parser._parse_date(getattr(entry, "published", None)),
+                metadata={"google_news": True},
             )
+        articles = await asyncio.gather(*(parse_entry(entry) for entry in entries))
+        if not fetch_fulltext:
+            return list(articles)
+
+        semaphore = asyncio.Semaphore(self.FULLTEXT_CONCURRENCY)
+
+        async def enrich(article: RawArticle) -> RawArticle | None:
+            try:
+                async with semaphore:
+                    content = await parser.fetch_full_content(article.external_url)
+            except Exception:
+                return None
+            if len(content.strip()) < self.MIN_FULLTEXT_LENGTH:
+                return None
+            article.content_original = content
+            return article
+
+        enriched = await asyncio.gather(*(enrich(article) for article in articles))
+        articles = [article for article in enriched if article is not None]
         return articles
 
     @classmethod

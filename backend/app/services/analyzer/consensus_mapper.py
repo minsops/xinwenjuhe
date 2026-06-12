@@ -46,22 +46,23 @@ class ConsensusMapper:
         narrative_frames: list[dict] | None = None,
         article_count_at_analysis: int | None = None,
     ) -> dict:
-        source_ids = {fragment.source_id for fragment in fragments}
+        independent_source_keys = {self._independent_source_key(fragment) for fragment in fragments}
         analyzed_article_count = article_count_at_analysis
         if analyzed_article_count is None:
             analyzed_article_count = len({fragment.article_id for fragment in fragments})
-        total = max(len(source_ids), 1)
+        total = max(len(independent_source_keys), 1)
         fact_groups = self._semantic_group(fragments)
         consensus = [
             {
                 "fact": group["representative"],
-                "confirmed_by": len(group["source_ids"]),
+                "confirmed_by": len(group["independent_source_keys"]),
                 "total": total,
                 "source_ids": [str(source_id) for source_id in group["source_ids"]],
                 "article_ids": [str(fragment.article_id) for fragment in group["fragments"]],
+                "syndicated_count": self._syndicated_count(group["fragments"]),
             }
             for group in fact_groups
-            if len(group["source_ids"]) / total >= settings.consensus_threshold
+            if len(group["independent_source_keys"]) / total >= settings.consensus_threshold
         ]
         disputed = [
             {
@@ -73,9 +74,9 @@ class ConsensusMapper:
             for contradiction in contradictions
         ]
         blind_spots = [
-            {"description": group["representative"], "mentioned_by": len(group["source_ids"]), "total": total}
+            {"description": group["representative"], "mentioned_by": len(group["independent_source_keys"]), "total": total}
             for group in fact_groups
-            if len(group["source_ids"]) / total < 0.3
+            if len(group["independent_source_keys"]) / total < 0.3
         ]
         summary = await self._generate_summary(consensus, disputed, total)
         return {
@@ -94,15 +95,16 @@ class ConsensusMapper:
         """Group fact fragments by embedding similarity instead of exact text."""
         groups: list[dict] = []
         for fragment in fragments:
-            if not fragment.embedding:
+            if not _has_vector(fragment.embedding):
                 continue
             matched = False
             for group in groups:
                 if self._cosine(fragment.embedding, group["center"]) >= self.SIMILARITY_THRESHOLD:
                     group["fragments"].append(fragment)
                     group["source_ids"].add(fragment.source_id)
+                    group["independent_source_keys"].add(self._independent_source_key(fragment))
                     group["center"] = self._mean_vector(
-                        [item.embedding for item in group["fragments"] if item.embedding]
+                        [item.embedding for item in group["fragments"] if _has_vector(item.embedding)]
                     )
                     if len(fragment.content) > len(group["representative"]):
                         group["representative"] = fragment.content
@@ -115,9 +117,27 @@ class ConsensusMapper:
                         "center": fragment.embedding,
                         "fragments": [fragment],
                         "source_ids": {fragment.source_id},
+                        "independent_source_keys": {self._independent_source_key(fragment)},
                     }
                 )
         return groups
+
+    @staticmethod
+    def _independent_source_key(fragment: FactFragment) -> str:
+        entities = fragment.entities or {}
+        wire_agency = entities.get("_via_wire")
+        if isinstance(wire_agency, str) and wire_agency.strip():
+            return f"wire:{wire_agency.strip().upper()}"
+        return str(fragment.source_id)
+
+    @classmethod
+    def _syndicated_count(cls, fragments: list[FactFragment]) -> int:
+        wire_counts: dict[str, int] = {}
+        for fragment in fragments:
+            key = cls._independent_source_key(fragment)
+            if key.startswith("wire:"):
+                wire_counts[key] = wire_counts.get(key, 0) + 1
+        return sum(max(0, count - 1) for count in wire_counts.values())
 
     async def _generate_summary(self, consensus: list[dict], disputed: list[dict], total: int) -> str:
         """Generate a neutral LLM summary, falling back to deterministic text."""
@@ -148,18 +168,20 @@ class ConsensusMapper:
         return "目前缺少足够的跨来源证据，暂不能形成稳定事件概要。"
 
     @staticmethod
-    def _cosine(left: list[float], right: list[float]) -> float:
-        if not left or not right or len(left) != len(right):
+    def _cosine(left: list[float] | None, right: list[float] | None) -> float:
+        left_values = _vector_values(left)
+        right_values = _vector_values(right)
+        if not left_values or not right_values or len(left_values) != len(right_values):
             return 0.0
-        numerator = sum(a * b for a, b in zip(left, right, strict=False))
-        denominator = math.sqrt(sum(value * value for value in left)) * math.sqrt(
-            sum(value * value for value in right)
+        numerator = sum(a * b for a, b in zip(left_values, right_values, strict=False))
+        denominator = math.sqrt(sum(value * value for value in left_values)) * math.sqrt(
+            sum(value * value for value in right_values)
         )
         return numerator / denominator if denominator else 0.0
 
     @staticmethod
-    def _mean_vector(vectors: list[list[float]]) -> list[float]:
-        vectors = [vector for vector in vectors if vector]
+    def _mean_vector(vectors: list[list[float] | None]) -> list[float]:
+        vectors = [list(vector) for vector in vectors if _has_vector(vector)]
         if not vectors:
             return []
         dims = min(len(vector) for vector in vectors)
@@ -218,3 +240,13 @@ class ConsensusMapper:
                 }
             )
         return {"nodes": nodes, "edges": edges}
+
+
+def _has_vector(vector: list[float] | None) -> bool:
+    return vector is not None and len(vector) > 0
+
+
+def _vector_values(vector: list[float] | None) -> list[float]:
+    if vector is None:
+        return []
+    return list(vector)

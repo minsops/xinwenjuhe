@@ -32,10 +32,10 @@ class EventClusteringService:
             )
         ).scalars().all()
         if not articles:
-            return {"status": "ok", "articles": 0, "events_created": 0}
+            return {"status": "ok", "articles": 0, "events_created": 0, "pipelines_triggered": 0}
 
         for article in articles:
-            if not article.embedding:
+            if not _has_vector(article.embedding):
                 await self.clusterer.embed_article(article)
 
         recent_events = await self._recent_events_with_centers()
@@ -45,13 +45,14 @@ class EventClusteringService:
             event = self._matching_event(article, recent_events)
             if event:
                 article.event_id = event.id
-                event.center_embedding = self._center([event.center_embedding or [], article.embedding or []])
+                event.center_embedding = self._center([event.center_embedding, article.embedding])
                 assigned += 1
             else:
                 remaining.append(article)
 
         clusters = await self.clusterer.cluster_new_articles(remaining)
         created = 0
+        created_event_ids = []
         for grouped in clusters.values():
             source_ids = {article.source_id for article in grouped}
             if len(grouped) < 3 or len(source_ids) < 3:
@@ -70,10 +71,11 @@ class EventClusteringService:
                     (article.published_at for article in grouped if article.published_at),
                     default=datetime.now(timezone.utc),
                 ),
-                center_embedding=self._center([article.embedding or [] for article in grouped]),
+                center_embedding=self._center([article.embedding for article in grouped]),
             )
             self.db.add(event)
             await self.db.flush()
+            created_event_ids.append(event.id)
             for article in grouped:
                 article.event_id = event.id
                 assigned += 1
@@ -81,7 +83,20 @@ class EventClusteringService:
             created += 1
 
         await self.db.commit()
-        return {"status": "ok", "articles": len(articles), "events_created": created, "assigned": assigned}
+        pipelines_triggered = 0
+        if created_event_ids:
+            from app.tasks.analyze_task import process_event_pipeline
+
+            for event_id in created_event_ids:
+                process_event_pipeline.delay(str(event_id))
+                pipelines_triggered += 1
+        return {
+            "status": "ok",
+            "articles": len(articles),
+            "events_created": created,
+            "assigned": assigned,
+            "pipelines_triggered": pipelines_triggered,
+        }
 
     async def _recent_events_with_centers(self) -> list[Event]:
         cutoff = datetime.now(timezone.utc) - timedelta(hours=settings.cluster_time_window_hours)
@@ -97,7 +112,7 @@ class EventClusteringService:
         best_event: Event | None = None
         best_score = 0.0
         for event in events:
-            score = self.clusterer.cosine(article.embedding or [], event.center_embedding or [])
+            score = self.clusterer.cosine(article.embedding, event.center_embedding)
             if score > best_score:
                 best_score = score
                 best_event = event
@@ -115,9 +130,13 @@ class EventClusteringService:
         return f"Automatically clustered from {len(articles)} related reports: {titles}"
 
     @staticmethod
-    def _center(vectors: list[list[float]]) -> list[float] | None:
-        vectors = [vector for vector in vectors if vector]
+    def _center(vectors: list[list[float] | None]) -> list[float] | None:
+        vectors = [list(vector) for vector in vectors if _has_vector(vector)]
         if not vectors:
             return None
         dims = min(len(vector) for vector in vectors)
         return [sum(vector[index] for vector in vectors) / len(vectors) for index in range(dims)]
+
+
+def _has_vector(vector: list[float] | None) -> bool:
+    return vector is not None and len(vector) > 0

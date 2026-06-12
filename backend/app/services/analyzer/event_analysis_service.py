@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import asyncio
 from uuid import UUID
 
 from sqlalchemy import delete, func, select
@@ -83,14 +84,25 @@ class EventAnalysisService:
     async def _extract_fragments(self, event_id: UUID, articles: list[Article]) -> list[FactFragment]:
         extractor = FactExtractor()
         embedder = TextEmbedder()
-        fragments: list[FactFragment] = []
-        for article in articles:
-            for item in await extractor.extract(article):
+        semaphore = asyncio.Semaphore(5)
+
+        async def extract_article(article: Article) -> list[FactFragment]:
+            metadata = article.article_metadata or {}
+            if metadata.get("duplicate_of"):
+                return []
+            wire_agency = metadata.get("wire_agency")
+            article_fragments: list[FactFragment] = []
+            async with semaphore:
+                items = await extractor.extract(article)
+            for item in items:
                 content = item.get("content", "").strip()
                 if not content:
                     continue
                 content_en = item.get("content_en") or content
-                fragments.append(
+                entities = item.get("entities") or {}
+                if wire_agency:
+                    entities = {**entities, "_via_wire": wire_agency}
+                article_fragments.append(
                     FactFragment(
                         event_id=event_id,
                         article_id=article.id,
@@ -98,13 +110,17 @@ class EventAnalysisService:
                         fragment_type=item.get("type", "what"),
                         content=content,
                         content_en=content_en,
-                        entities=item.get("entities") or {},
+                        entities=entities,
                         numbers=item.get("numbers") or {},
                         source_attribution=item.get("source_attribution", "unattributed"),
                         certainty_level=item.get("certainty_level", "reportedly"),
                         embedding=await embedder.embed_text(content_en),
                     )
                 )
+            return article_fragments
+
+        nested = await asyncio.gather(*(extract_article(article) for article in articles))
+        fragments = [fragment for article_fragments in nested for fragment in article_fragments]
         if fragments and embedder.is_using_fallback:
             logger.warning(
                 "Fact fragment embeddings used hash fallback for event %s; semantic analysis quality may be degraded",

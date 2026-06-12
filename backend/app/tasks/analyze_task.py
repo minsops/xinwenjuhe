@@ -5,14 +5,16 @@ from __future__ import annotations
 import asyncio
 from uuid import UUID
 
-from celery import chain, group
+from celery import chain
+from redis import Redis
 from sqlalchemy import delete, func, select
 
 from app.api.v1.websocket import publish_event_update
-from app.db import AsyncSessionLocal
+from app.config import settings
 from app.models.article import Article
 from app.models.contradiction import Contradiction
 from app.models.credibility import EventAnalysis
+from app.models.event import Event
 from app.models.fact_fragment import FactFragment
 from app.services.analyzer.consensus_mapper import ConsensusMapper
 from app.services.analyzer.contradiction_detector import ContradictionDetector
@@ -24,6 +26,10 @@ from app.services.processor.translator import TranslationService
 from app.tasks.celery_app import celery
 from app.tasks.collect_task import collect_articles_for_event
 from app.tasks.progress import set_progress
+from app.tasks.worker_db import worker_session
+
+
+PIPELINE_LOCK_TTL_SECONDS = 30 * 60
 
 
 @celery.task(bind=True, name="app.tasks.analyze_task.translate_articles")
@@ -31,7 +37,14 @@ def translate_articles(self, payload: dict) -> dict:
     return asyncio.run(_translate_articles(self.request.id, payload))
 
 
-@celery.task(bind=True, name="app.tasks.analyze_task.deduplicate_articles")
+@celery.task(
+    bind=True,
+    name="app.tasks.analyze_task.deduplicate_articles",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    max_retries=3,
+)
 def deduplicate_articles(self, payload: dict) -> dict:
     return asyncio.run(_deduplicate_articles(self.request.id, payload))
 
@@ -50,38 +63,87 @@ def merge_group_results(self, results: list) -> dict:
     return merged
 
 
-@celery.task(bind=True, name="app.tasks.analyze_task.extract_facts")
+@celery.task(
+    bind=True,
+    name="app.tasks.analyze_task.extract_facts",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    max_retries=3,
+)
 def extract_facts(self, payload: dict) -> dict:
     return asyncio.run(_extract_facts(self.request.id, _event_id_from_payload(payload), payload))
 
 
-@celery.task(bind=True, name="app.tasks.analyze_task.detect_contradictions")
+@celery.task(
+    bind=True,
+    name="app.tasks.analyze_task.detect_contradictions",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    max_retries=3,
+)
 def detect_contradictions(self, payload: dict) -> dict:
     return asyncio.run(_detect_contradictions(self.request.id, _event_id_from_payload(payload), payload))
 
 
-@celery.task(bind=True, name="app.tasks.analyze_task.analyze_narratives")
+@celery.task(
+    bind=True,
+    name="app.tasks.analyze_task.analyze_narratives",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    max_retries=3,
+)
 def analyze_narratives(self, payload: dict) -> dict:
     return asyncio.run(_analyze_narratives(self.request.id, _event_id_from_payload(payload), payload))
 
 
-@celery.task(bind=True, name="app.tasks.analyze_task.generate_consensus_map")
+@celery.task(
+    bind=True,
+    name="app.tasks.analyze_task.generate_consensus_map",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    max_retries=3,
+)
 def generate_consensus_map(self, payload: dict) -> dict:
     return asyncio.run(_generate_consensus_map(self.request.id, _event_id_from_payload(payload), payload))
 
 
-@celery.task(bind=True, name="app.tasks.analyze_task.notify_clients")
+@celery.task(
+    bind=True,
+    name="app.tasks.analyze_task.notify_clients",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    max_retries=3,
+)
 def notify_clients(self, payload: dict) -> dict:
     return asyncio.run(_notify_clients(self.request.id, payload))
+
+
+@celery.task(
+    bind=True,
+    name="app.tasks.analyze_task.scan_events_needing_analysis",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    max_retries=3,
+)
+def scan_events_needing_analysis(self, limit: int = 20) -> dict:
+    """Queue analysis for active events that lack or need refreshed analysis."""
+    return asyncio.run(_scan_events_needing_analysis(self.request.id, limit))
 
 
 @celery.task(name="app.tasks.analyze_task.process_event_pipeline")
 def process_event_pipeline(event_id: str) -> str:
     """Run the documented event processing pipeline in dependency order."""
+    if not _acquire_pipeline_lock(event_id):
+        return "skipped:locked"
     workflow = chain(
         collect_articles_for_event.s(event_id),
-        group(translate_articles.s(), deduplicate_articles.s()),
-        merge_group_results.s(),
+        deduplicate_articles.s(),
         extract_facts.s(),
         detect_contradictions.s(),
         analyze_narratives.s(),
@@ -108,7 +170,7 @@ async def _translate_articles(task_id: str, payload: dict) -> dict:
     set_progress(task_id, status="running", step="translate_articles", event_id=event_id)
     if not event_id:
         return {**payload, "translated": False}
-    async with AsyncSessionLocal() as db:
+    async with worker_session() as db:
         articles = (
             await db.execute(
                 select(Article).where(Article.event_id == UUID(event_id), Article.content_translated.is_(None))
@@ -134,7 +196,8 @@ async def _deduplicate_articles(task_id: str, payload: dict) -> dict:
     duplicates = 0
     wire_copies = 0
     canonical_articles: list[Article] = []
-    async with AsyncSessionLocal() as db:
+    duplicate_article_ids: list[UUID] = []
+    async with worker_session() as db:
         articles = (
             await db.execute(
                 select(Article)
@@ -159,10 +222,13 @@ async def _deduplicate_articles(task_id: str, payload: dict) -> dict:
             if duplicate_of:
                 metadata["duplicate_of"] = str(duplicate_of.id)
                 metadata["duplicate_reason"] = "content_similarity"
+                duplicate_article_ids.append(article.id)
                 duplicates += 1
             else:
                 canonical_articles.append(article)
             article.article_metadata = metadata
+        if duplicate_article_ids:
+            await db.execute(delete(FactFragment).where(FactFragment.article_id.in_(duplicate_article_ids)))
         await db.commit()
     set_progress(
         task_id,
@@ -177,19 +243,29 @@ async def _deduplicate_articles(task_id: str, payload: dict) -> dict:
 
 async def _extract_facts(task_id: str, event_id: str, payload: dict | list) -> dict:
     set_progress(task_id, status="running", step="extract_facts", event_id=event_id)
-    async with AsyncSessionLocal() as db:
-        articles = (await db.execute(select(Article).where(Article.event_id == UUID(event_id)))).scalars().all()
+    async with worker_session() as db:
+        already_extracted = select(FactFragment.article_id).where(FactFragment.event_id == UUID(event_id))
+        articles = (
+            await db.execute(
+                select(Article)
+                .where(Article.event_id == UUID(event_id), Article.id.not_in(already_extracted))
+                .order_by(Article.published_at.asc().nullsfirst(), Article.created_at.asc())
+            )
+        ).scalars().all()
         fragments = await EventAnalysisService(db)._extract_fragments(UUID(event_id), articles)
-        await db.execute(delete(FactFragment).where(FactFragment.event_id == UUID(event_id)))
         db.add_all(fragments)
+        total_fragments = await db.scalar(
+            select(func.count()).select_from(FactFragment).where(FactFragment.event_id == UUID(event_id))
+        )
         await db.commit()
-    set_progress(task_id, status="complete", step="extract_facts", fragments=len(fragments), event_id=event_id)
-    return {"event_id": event_id, "facts_extracted": len(fragments), "previous": payload}
+    total = (total_fragments or 0) + len(fragments)
+    set_progress(task_id, status="complete", step="extract_facts", new_fragments=len(fragments), total_fragments=total, event_id=event_id)
+    return {"event_id": event_id, "new_fragments": len(fragments), "facts_extracted": total, "previous": payload}
 
 
 async def _detect_contradictions(task_id: str, event_id: str, payload: dict) -> dict:
     set_progress(task_id, status="running", step="detect_contradictions", event_id=event_id)
-    async with AsyncSessionLocal() as db:
+    async with worker_session() as db:
         fragments = (
             await db.execute(select(FactFragment).where(FactFragment.event_id == UUID(event_id)))
         ).scalars().all()
@@ -209,7 +285,7 @@ async def _detect_contradictions(task_id: str, event_id: str, payload: dict) -> 
 
 async def _analyze_narratives(task_id: str, event_id: str, payload: dict) -> dict:
     set_progress(task_id, status="running", step="analyze_narratives", event_id=event_id)
-    async with AsyncSessionLocal() as db:
+    async with worker_session() as db:
         articles = (await db.execute(select(Article).where(Article.event_id == UUID(event_id)))).scalars().all()
         frames = await NarrativeAnalyzer().compare_frames(UUID(event_id), articles)
     set_progress(task_id, status="complete", step="analyze_narratives", frames=len(frames), event_id=event_id)
@@ -218,7 +294,7 @@ async def _analyze_narratives(task_id: str, event_id: str, payload: dict) -> dic
 
 async def _generate_consensus_map(task_id: str, event_id: str, payload: dict) -> dict:
     set_progress(task_id, status="running", step="generate_consensus_map", event_id=event_id)
-    async with AsyncSessionLocal() as db:
+    async with worker_session() as db:
         fragments = (
             await db.execute(select(FactFragment).where(FactFragment.event_id == UUID(event_id)))
         ).scalars().all()
@@ -263,5 +339,58 @@ async def _notify_clients(task_id: str, payload: dict) -> dict:
     }
     if event_id:
         await publish_event_update(message)
+        _release_pipeline_lock(event_id)
     set_progress(task_id, status="complete", step="notify_clients", event_id=event_id, notified=bool(event_id))
     return {**payload, "notified": bool(event_id)}
+
+
+async def _scan_events_needing_analysis(task_id: str, limit: int) -> dict:
+    set_progress(task_id, status="running", step="scan_events_needing_analysis", limit=limit)
+    queued: list[str] = []
+    async with worker_session() as db:
+        rows = (
+            await db.execute(
+                select(Event, EventAnalysis)
+                .outerjoin(EventAnalysis, EventAnalysis.event_id == Event.id)
+                .where(Event.status == "active", Event.article_count > 0)
+                .order_by(Event.last_updated_at.desc().nullslast(), Event.created_at.desc())
+                .limit(limit * 4)
+            )
+        ).all()
+        for event, analysis in rows:
+            if len(queued) >= limit:
+                break
+            if not analysis:
+                queued.append(str(event.id))
+                continue
+            previous_count = analysis.article_count_at_analysis or 0
+            if previous_count == 0:
+                queued.append(str(event.id))
+                continue
+            change_ratio = abs((event.article_count or 0) - previous_count) / previous_count
+            if change_ratio > settings.reanalyze_threshold:
+                queued.append(str(event.id))
+
+    task_ids = []
+    for event_id in queued:
+        result = process_event_pipeline.delay(event_id)
+        task_ids.append(result.id)
+    summary = {"status": "ok", "events_scanned": len(rows), "queued": len(queued), "event_ids": queued, "task_ids": task_ids}
+    set_progress(task_id, status="complete", step="scan_events_needing_analysis", result=summary)
+    return summary
+
+
+def _acquire_pipeline_lock(event_id: str) -> bool:
+    try:
+        client = Redis.from_url(settings.redis_url, decode_responses=True)
+        return bool(client.set(f"pipeline_lock:{event_id}", "1", nx=True, ex=PIPELINE_LOCK_TTL_SECONDS))
+    except Exception:
+        return True
+
+
+def _release_pipeline_lock(event_id: str) -> None:
+    try:
+        client = Redis.from_url(settings.redis_url, decode_responses=True)
+        client.delete(f"pipeline_lock:{event_id}")
+    except Exception:
+        return

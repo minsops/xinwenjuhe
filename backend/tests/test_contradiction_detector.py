@@ -78,6 +78,17 @@ class ContradictionDetectorTest(unittest.TestCase):
         self.assertEqual(contradictions[0].contradiction_type, "attribution_conflict")
         self.assertEqual(len(contradictions[0].fragment_ids), 2)
 
+    def test_reported_number_fragments_do_not_create_fake_discrepancies(self) -> None:
+        event_id = uuid.uuid4()
+        fragments = [
+            _fragment(event_id, uuid.uuid4(), uuid.uuid4(), "number", "2026", numbers={"description": "reported_number", "value": 2026}),
+            _fragment(event_id, uuid.uuid4(), uuid.uuid4(), "number", "12", numbers={"description": "reported_number", "value": 12}),
+        ]
+
+        contradictions = asyncio.run(ContradictionDetector().detect_number_discrepancies(event_id, fragments))
+
+        self.assertEqual(contradictions, [])
+
 
 def _fragment(
     event_id: uuid.UUID,

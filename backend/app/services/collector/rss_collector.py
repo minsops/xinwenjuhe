@@ -21,6 +21,8 @@ from app.schemas.article import RawArticle
 class RSSCollector:
     """Collect articles from RSS 2.0 and Atom feeds."""
 
+    FULLTEXT_CONCURRENCY = 5
+    PER_DOMAIN_DELAY = 0.5
     USER_AGENTS = [
         "TruthPuzzle/0.1 (+https://truthpuzzle.local)",
         "Mozilla/5.0 (compatible; TruthPuzzleBot/0.1; +https://truthpuzzle.local)",
@@ -34,30 +36,37 @@ class RSSCollector:
             response = await client.get(source.feed_url, headers={"User-Agent": random.choice(self.USER_AGENTS)})
             response.raise_for_status()
         parsed = feedparser.parse(response.content)
-        articles: list[RawArticle] = []
-        for entry in parsed.entries:
+        semaphore = asyncio.Semaphore(self.FULLTEXT_CONCURRENCY)
+
+        async def parse_entry(entry) -> RawArticle | None:
             published_at = self._parse_date(
                 getattr(entry, "published", None) or getattr(entry, "updated", None)
             )
             if source.last_collected_at and published_at and published_at <= source.last_collected_at:
-                continue
+                return None
             link = getattr(entry, "link", "")
             if not link:
-                continue
+                return None
             summary = getattr(entry, "summary", "") or getattr(entry, "description", "")
-            content = await self.fetch_full_content(link) or trafilatura.extract(summary) or summary
-            articles.append(
-                RawArticle(
-                    source_id=source.id,
-                    external_url=link,
-                    title_original=getattr(entry, "title", "Untitled"),
-                    content_original=content or "",
-                    language=source.language,
-                    published_at=published_at,
-                    author=getattr(entry, "author", None),
-                    metadata={"feed_id": getattr(entry, "id", None)},
-                )
+            async with semaphore:
+                await asyncio.sleep(self.PER_DOMAIN_DELAY)
+                try:
+                    content = await self.fetch_full_content(link)
+                except Exception:
+                    content = ""
+                content = content or trafilatura.extract(summary) or summary
+            return RawArticle(
+                source_id=source.id,
+                external_url=link,
+                title_original=getattr(entry, "title", "Untitled"),
+                content_original=content or "",
+                language=source.language,
+                published_at=published_at,
+                author=getattr(entry, "author", None),
+                metadata={"feed_id": getattr(entry, "id", None)},
             )
+        rows = await asyncio.gather(*(parse_entry(entry) for entry in parsed.entries))
+        articles = [row for row in rows if row is not None]
         return articles
 
     @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=1, max=4))

@@ -24,7 +24,10 @@ export function ConsensusZone({ items, onFactSelect }: Props) {
             onClick={() => item.article_ids?.[0] ? onFactSelect?.(item.article_ids[0], item.fact) : undefined}
           >
             <div>{item.fact}</div>
-            <div className="mt-2"><Badge tone="green">{item.confirmed_by}/{item.total} 个来源</Badge></div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Badge tone="green">{item.confirmed_by}/{item.total} 个独立来源</Badge>
+              {item.syndicated_count ? <Badge tone="yellow">含 {item.syndicated_count} 篇通讯社转载</Badge> : null}
+            </div>
           </button>
         )) : <p className="text-sm text-stone-500">{text.noConsensus}</p>}
       </div>

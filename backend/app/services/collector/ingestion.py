@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 from uuid import UUID
@@ -9,6 +10,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models.article import Article
 from app.models.discovered_source import DiscoveredSource
 from app.models.event import Event
@@ -41,14 +43,7 @@ class ArticleIngestionService:
             return {"source_id": str(source.id), "collected": 0, "skipped": 0, "status": "inactive"}
 
         try:
-            if source.feed_type == "rss":
-                raw_articles = await self.rss.fetch_feed(source)
-            elif source.feed_type == "api":
-                raw_articles = await self.api.fetch_feed(source)
-            elif source.feed_type == "scraper":
-                raw_articles = await self.scraper.scrape_source(source)
-            else:
-                raw_articles = []
+            raw_articles = await self._fetch_source_articles(source)
             result = await self.persist_articles(raw_articles, fallback_source=source, event_id=event_id)
             source.last_collected_at = datetime.now(timezone.utc)
             update_collection_success(source)
@@ -73,10 +68,61 @@ class ArticleIngestionService:
             stmt = stmt.limit(limit)
         sources = (await self.db.execute(stmt)).scalars().all()
         results = []
-        for source in sources:
+        semaphore = asyncio.Semaphore(settings.max_concurrent_scrapers)
+
+        async def fetch_one(source: Source) -> dict:
+            if not source.is_active:
+                return {"source": source, "raw_articles": [], "inactive": True}
             try:
-                results.append(await self.collect_source(source))
+                async with semaphore:
+                    raw_articles = await self._fetch_source_articles(source)
+                return {"source": source, "raw_articles": raw_articles}
             except Exception as exc:
+                return {"source": source, "error": exc}
+
+        fetch_results = await asyncio.gather(*(fetch_one(source) for source in sources))
+        for item in fetch_results:
+            source = item["source"]
+            if item.get("inactive"):
+                results.append({"source_id": str(source.id), "collected": 0, "skipped": 0, "status": "inactive"})
+                continue
+            if item.get("error"):
+                exc = item["error"]
+                deactivated = update_collection_failure(source)
+                if deactivated:
+                    record_source_alert(
+                        str(source.id),
+                        source.name,
+                        "collection_failure_threshold",
+                        {"consecutive_failures": source.consecutive_failures, "error": str(exc)},
+                    )
+                await self.db.commit()
+                results.append(
+                    {
+                        "source_id": str(source.id),
+                        "status": "failed",
+                        "collected": 0,
+                        "skipped": 0,
+                        "error": str(exc),
+                    }
+                )
+                continue
+            try:
+                result = await self.persist_articles(item["raw_articles"], fallback_source=source)
+                source.last_collected_at = datetime.now(timezone.utc)
+                update_collection_success(source)
+                await self.db.commit()
+                results.append({"source_id": str(source.id), "status": "ok", **result})
+            except Exception as exc:
+                deactivated = update_collection_failure(source)
+                if deactivated:
+                    record_source_alert(
+                        str(source.id),
+                        source.name,
+                        "collection_failure_threshold",
+                        {"consecutive_failures": source.consecutive_failures, "error": str(exc)},
+                    )
+                await self.db.commit()
                 results.append(
                     {
                         "source_id": str(source.id),
@@ -93,6 +139,15 @@ class ArticleIngestionService:
             "skipped": sum(item.get("skipped", 0) for item in results),
             "results": results,
         }
+
+    async def _fetch_source_articles(self, source: Source) -> list[RawArticle]:
+        if source.feed_type == "rss":
+            return await self.rss.fetch_feed(source)
+        if source.feed_type == "api":
+            return await self.api.fetch_feed(source)
+        if source.feed_type == "scraper":
+            return await self.scraper.scrape_source(source)
+        return []
 
     async def collect_google_news_for_event(self, event: Event) -> dict:
         """Search Google News language feeds for an event and persist results."""

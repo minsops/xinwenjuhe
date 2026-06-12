@@ -15,6 +15,8 @@ from app.services.clustering.event_clusterer import EventClusterer
 class ContradictionDetector:
     """Detect numeric discrepancies, omissions, and semantic conflicts."""
 
+    COMPARABLE_NUMBER_FIELDS = {"casualties", "injuries", "damage_cost", "distance", "count"}
+
     async def detect_all_from_fragments(self, event_id: UUID, fragments: list[FactFragment]) -> list[Contradiction]:
         contradictions = []
         contradictions += await self.detect_number_discrepancies(event_id, fragments)
@@ -29,7 +31,9 @@ class ContradictionDetector:
         grouped: dict[str, list[FactFragment]] = defaultdict(list)
         for fragment in fragments:
             if fragment.fragment_type == "number" and fragment.numbers:
-                grouped[fragment.numbers.get("description", "reported_number")].append(fragment)
+                field = fragment.numbers.get("description")
+                if field in self.COMPARABLE_NUMBER_FIELDS:
+                    grouped[field].append(fragment)
 
         contradictions: list[Contradiction] = []
         for field, items in grouped.items():

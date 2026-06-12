@@ -43,6 +43,10 @@ celery.conf.beat_schedule = {
         "task": "app.tasks.cluster_task.cluster_new_articles",
         "schedule": settings.collect_interval_minutes * 60,
     },
+    "scan-events-needing-analysis": {
+        "task": "app.tasks.analyze_task.scan_events_needing_analysis",
+        "schedule": 30 * 60,
+    },
     "refresh-source-credibility": {
         "task": "app.tasks.credibility_task.refresh_source_credibility",
         "schedule": 30 * 24 * 60 * 60,

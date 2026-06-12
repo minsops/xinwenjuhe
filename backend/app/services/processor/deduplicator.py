@@ -27,6 +27,14 @@ class Deduplicator:
             "AP": r"\b(?:associated press|ap)\b",
             "AFP": r"\bafp\b",
             "EFE": r"\befe\b",
+            "XINHUA": r"\b(?:xinhua|xinhuanet)\b",
+            "TASS": r"\b(?:tass|itar-tass)\b",
+            "ANADOLU": r"\b(?:anadolu|aa)\b",
+            "DPA": r"\b(?:deutsche presse-agentur|dpa)\b",
+            "KYODO": r"\bkyodo\b",
+            "YONHAP": r"\byonhap\b",
+            "PTI": r"\b(?:press trust of india|pti)\b",
+            "IRNA": r"\birna\b",
         }
         for agency, pattern in agency_patterns.items():
             if re.search(pattern, prefix):

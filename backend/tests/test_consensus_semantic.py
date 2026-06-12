@@ -93,6 +93,41 @@ class ConsensusSemanticTest(unittest.TestCase):
 
         self.assertTrue(summary.startswith("基于 2 个来源"))
 
+    def test_wire_reposts_count_as_one_independent_source(self) -> None:
+        event_id = uuid.uuid4()
+        wire_sources = [uuid.uuid4() for _ in range(4)]
+        independent_sources = [uuid.uuid4(), uuid.uuid4()]
+        fragments = [
+            _fragment(
+                event_id,
+                uuid.uuid4(),
+                source_id,
+                "Reuters reported 12 casualties after the crash",
+                [1.0, 0.0, 0.0],
+                entities={"_via_wire": "REUTERS"},
+            )
+            for source_id in wire_sources
+        ]
+        fragments.extend(
+            _fragment(
+                event_id,
+                uuid.uuid4(),
+                source_id,
+                "Officials reported 12 casualties after the crash",
+                [0.99, 0.01, 0.0],
+            )
+            for source_id in independent_sources
+        )
+
+        payload = asyncio.run(
+            ConsensusMapper(llm=EmptyLLM()).generate_analysis_payload(event_id, fragments, [])
+        )
+
+        self.assertEqual(payload["consensus_facts"][0]["confirmed_by"], 3)
+        self.assertEqual(payload["consensus_facts"][0]["total"], 3)
+        self.assertEqual(payload["consensus_facts"][0]["syndicated_count"], 3)
+        self.assertEqual(len(payload["consensus_facts"][0]["source_ids"]), 6)
+
 
 def _fragment(
     event_id: uuid.UUID,
@@ -100,6 +135,7 @@ def _fragment(
     source_id: uuid.UUID,
     content: str,
     embedding: list[float] | None,
+    entities: dict | None = None,
 ) -> FactFragment:
     return FactFragment(
         id=uuid.uuid4(),
@@ -109,7 +145,7 @@ def _fragment(
         fragment_type="what",
         content=content,
         content_en=content,
-        entities={},
+        entities=entities or {},
         numbers={},
         source_attribution="official_statement",
         certainty_level="confirmed",

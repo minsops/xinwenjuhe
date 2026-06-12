@@ -8,12 +8,12 @@ from uuid import UUID
 from sqlalchemy import select
 
 from app.config import settings
-from app.db import AsyncSessionLocal
 from app.models.event import Event
 from app.models.source import Source
 from app.services.collector.ingestion import ArticleIngestionService
 from app.tasks.celery_app import celery
 from app.tasks.progress import set_progress
+from app.tasks.worker_db import worker_session
 
 
 @celery.task(
@@ -21,6 +21,8 @@ from app.tasks.progress import set_progress
     name="app.tasks.collect_task.collect_active_sources",
     autoretry_for=(Exception,),
     retry_backoff=True,
+    retry_backoff_max=600,
+    max_retries=3,
 )
 def collect_active_sources(self, limit: int | None = None) -> dict:
     """Collect active RSS/scraper sources and persist new articles."""
@@ -32,6 +34,8 @@ def collect_active_sources(self, limit: int | None = None) -> dict:
     name="app.tasks.collect_task.collect_hot_events",
     autoretry_for=(Exception,),
     retry_backoff=True,
+    retry_backoff_max=600,
+    max_retries=3,
 )
 def collect_hot_events(self, limit: int = 10) -> dict:
     """Collect Google News updates for hot active events."""
@@ -43,6 +47,8 @@ def collect_hot_events(self, limit: int = 10) -> dict:
     name="app.tasks.collect_task.collect_articles_for_event",
     autoretry_for=(Exception,),
     retry_backoff=True,
+    retry_backoff_max=600,
+    max_retries=3,
 )
 def collect_articles_for_event(self, event_id: str) -> dict:
     """Collect multilingual Google News results for a specific event."""
@@ -54,6 +60,8 @@ def collect_articles_for_event(self, event_id: str) -> dict:
     name="app.tasks.collect_task.collect_single_source",
     autoretry_for=(Exception,),
     retry_backoff=True,
+    retry_backoff_max=600,
+    max_retries=3,
 )
 def collect_single_source(self, source_id: str) -> dict:
     """Collect one source by id."""
@@ -62,7 +70,7 @@ def collect_single_source(self, source_id: str) -> dict:
 
 async def _collect_active_sources(task_id: str, limit: int | None) -> dict:
     set_progress(task_id, status="running", step="collect_active_sources")
-    async with AsyncSessionLocal() as db:
+    async with worker_session() as db:
         result = await ArticleIngestionService(db).collect_active_sources(limit=limit)
     set_progress(task_id, status="complete", step="collect_active_sources", result=result)
     return result
@@ -74,7 +82,7 @@ async def _collect_hot_events(task_id: str, limit: int) -> dict:
         result = {"status": "disabled", "events": 0, "collected": 0, "skipped": 0, "results": []}
         set_progress(task_id, status="complete", step="collect_hot_events", result=result)
         return result
-    async with AsyncSessionLocal() as db:
+    async with worker_session() as db:
         events = (
             await db.execute(
                 select(Event)
@@ -103,7 +111,7 @@ async def _collect_hot_events(task_id: str, limit: int) -> dict:
 
 async def _collect_articles_for_event(task_id: str, event_id: UUID) -> dict:
     set_progress(task_id, status="running", step="collect_articles_for_event", event_id=str(event_id))
-    async with AsyncSessionLocal() as db:
+    async with worker_session() as db:
         event = await db.get(Event, event_id)
         if not event:
             result = {"status": "missing_event", "event_id": str(event_id)}
@@ -115,7 +123,7 @@ async def _collect_articles_for_event(task_id: str, event_id: UUID) -> dict:
 
 async def _collect_single_source(task_id: str, source_id: UUID) -> dict:
     set_progress(task_id, status="running", step="collect_single_source", source_id=str(source_id))
-    async with AsyncSessionLocal() as db:
+    async with worker_session() as db:
         source = await db.scalar(select(Source).where(Source.id == source_id))
         if not source:
             result = {"status": "missing_source", "source_id": str(source_id)}
