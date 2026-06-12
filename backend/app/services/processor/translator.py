@@ -11,7 +11,7 @@ from app.services.llm.base import LLMProvider
 from app.services.llm.factory import get_llm_provider
 
 
-TRANSLATION_PROMPT = """将以下{source_lang}新闻报道翻译为{target_lang}。
+TRANSLATION_PROMPT = """将以下{source_lang}新闻报道翻译为{target_lang_label}。
 
 翻译要求：
 1. 保留原文的语气和措辞倾向（不要将带有立场的表述翻译成中性表述）
@@ -19,12 +19,17 @@ TRANSLATION_PROMPT = """将以下{source_lang}新闻报道翻译为{target_lang}
 3. 保留原文中的直接引述，不做改写
 4. 保留原文的段落结构
 5. 对于难以精确翻译的文化特定表述，保留原文并在括号内解释
+6. 只输出译文，不要输出说明、前缀、Markdown 或“以下是翻译”
 
 原文：
 {original_text}
 """
 
-TRANSLATION_CACHE_VERSION = "v1"
+TRANSLATION_CACHE_VERSION = "v2"
+
+
+class TranslationError(RuntimeError):
+    """Raised when a translation provider returns unusable output."""
 
 
 class TranslationService:
@@ -36,10 +41,18 @@ class TranslationService:
         self.llm = llm or get_llm_provider()
 
     async def translate_article(self, text: str, source_lang: str, target_lang: str = "en") -> str:
+        if not text.strip():
+            return ""
+        if self._same_language(source_lang, target_lang):
+            return text
         prompt = TRANSLATION_PROMPT.format(
-            source_lang=source_lang, target_lang=target_lang, original_text=text
+            source_lang=self.language_label(source_lang),
+            target_lang_label=self.language_label(target_lang),
+            original_text=text,
         )
-        return await self.llm.complete("You are a precise news translator.", prompt)
+        translated = (await self.llm.complete("你是专业新闻译者，必须忠实翻译并只输出译文。", prompt)).strip()
+        self._validate_translation(text, translated, source_lang, target_lang)
+        return translated
 
     async def translate_on_demand(
         self,
@@ -85,3 +98,33 @@ class TranslationService:
             return f"translate:{TRANSLATION_CACHE_VERSION}:{article_id}:{field}:{target_lang}"
         digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
         return f"translate:{TRANSLATION_CACHE_VERSION}:{digest}:{target_lang}"
+
+    @staticmethod
+    def language_label(language: str) -> str:
+        normalized = (language or "").lower()
+        labels = {
+            "zh": "简体中文",
+            "zh-cn": "简体中文",
+            "zh-hans": "简体中文",
+            "en": "英文",
+            "en-us": "英文",
+            "en-gb": "英文",
+        }
+        return labels.get(normalized, language or "原文语言")
+
+    @staticmethod
+    def _same_language(source_lang: str, target_lang: str) -> bool:
+        source = (source_lang or "").lower()
+        target = (target_lang or "").lower()
+        return bool(source and target and source.split("-")[0] == target.split("-")[0])
+
+    @staticmethod
+    def _validate_translation(original: str, translated: str, source_lang: str, target_lang: str) -> None:
+        if not translated:
+            raise TranslationError("翻译服务没有返回内容")
+        if translated.strip() == original.strip() and not TranslationService._same_language(source_lang, target_lang):
+            raise TranslationError("翻译服务返回了原文")
+        if target_lang.lower().startswith("zh") and not source_lang.lower().startswith("zh"):
+            cjk_chars = sum(1 for char in translated if "\u4e00" <= char <= "\u9fff")
+            if cjk_chars < max(6, min(30, len(translated) // 20)):
+                raise TranslationError("翻译结果不像中文")

@@ -18,7 +18,7 @@ class FactExtractor:
 
 字段：
 - type: what/who/where/when/number/cause/consequence
-- content: 事实声明的完整内容
+- content: 必填。用简体中文写出事实声明的完整内容，不要照抄外文
 - content_en: 必填。将该事实声明用英文表达；如果原文已经是英文，可直接复制 content
 - entities: 涉及的实体
 - numbers: 涉及的量化数据
@@ -42,7 +42,10 @@ class FactExtractor:
             parsed = json.loads(raw)
             if isinstance(parsed, dict) and isinstance(parsed.get("facts"), list):
                 parsed = parsed["facts"]
-            return self._validate_fragments(parsed, article.language) if isinstance(parsed, list) else self._fallback_extract(article)
+            if isinstance(parsed, list):
+                fragments = self._validate_fragments(parsed, article.language)
+                return fragments or self._fallback_extract(article)
+            return self._fallback_extract(article)
         except json.JSONDecodeError:
             return self._fallback_extract(article)
 
@@ -71,12 +74,16 @@ class FactExtractor:
                 if key in seen:
                     continue
                 seen.add(key)
-                content = self._context(text, match.start(), match.end())
+                if description == "casualties":
+                    content = f"报道提到至少 {value:g} 人死亡或遇难。"
+                else:
+                    content = f"报道提到至少 {value:g} 人受伤。"
+                content_en = self._context(text, match.start(), match.end()) or content
                 fragments.append(
                     {
                         "type": "number",
                         "content": content,
-                        "content_en": content,
+                        "content_en": content_en,
                         "entities": {},
                         "numbers": {"value": value, "unit": "people", "description": description},
                         "source_attribution": "unattributed",
@@ -99,6 +106,8 @@ class FactExtractor:
             if not content_en and is_english:
                 content_en = content
             if not content_en:
+                continue
+            if not _contains_cjk(content) and not language.lower().startswith("zh"):
                 continue
             fragment_type = row.get("type") if row.get("type") in self.allowed_types else "what"
             source_attribution = (
@@ -125,3 +134,7 @@ class FactExtractor:
     @staticmethod
     def _context(text: str, start: int, end: int, radius: int = 80) -> str:
         return re.sub(r"\s+", " ", text[max(0, start - radius) : min(len(text), end + radius)]).strip()
+
+
+def _contains_cjk(value: str) -> bool:
+    return any("\u4e00" <= char <= "\u9fff" for char in value)

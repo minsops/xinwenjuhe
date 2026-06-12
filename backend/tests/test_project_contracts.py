@@ -248,7 +248,7 @@ class ProjectContractsTest(unittest.TestCase):
         factory = (BACKEND_ROOT / "app/services/llm/factory.py").read_text(encoding="utf-8")
         deepseek = (BACKEND_ROOT / "app/services/llm/deepseek_provider.py").read_text(encoding="utf-8")
         config = (BACKEND_ROOT / "app/config.py").read_text(encoding="utf-8")
-        self.assertIn("Multiple sources report the event", base)
+        self.assertIn("多个来源报道了同一事件", base)
         self.assertIn("source_attribution", base)
         self.assertIn("DeepSeekProvider", factory)
         self.assertIn("deepseek_api_key", config)
@@ -284,7 +284,7 @@ class ProjectContractsTest(unittest.TestCase):
         readme_path = ROOT / "README.md"
         sources = (ROOT / "data/seed/sources.json").read_text(encoding="utf-8")
         self.assertIn("merge_group_results", analyze_task)
-        self.assertIn("merge_group_results.s()", analyze_task)
+        self.assertIn("deduplicate_articles.s()", analyze_task)
         self.assertIn("_group_by_topic_semantic", detector)
         self.assertIn("EventClusterer.cosine", detector)
         self.assertIn("TRANSLATION_CACHE_VERSION", translator)

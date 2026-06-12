@@ -13,7 +13,7 @@ from app.core.errors import ApiError, envelope
 from app.db import get_db
 from app.models.article import Article
 from app.schemas.article import ArticleRead, TranslateRequest, TranslateResponse
-from app.services.processor.translator import TranslationService
+from app.services.processor.translator import TranslationError, TranslationService
 
 router = APIRouter()
 
@@ -34,20 +34,23 @@ async def translate_article(article_id: UUID, payload: TranslateRequest, db: Asy
     if not article:
         raise ApiError("article_not_found", "Article not found", 404)
     service = TranslationService()
-    title, title_cached = await service.translate_on_demand(
-        article.title_original,
-        article.language,
-        payload.target_lang,
-        article_id=str(article_id),
-        field="title",
-    )
-    content, content_cached = await service.translate_on_demand(
-        article.content_original,
-        article.language,
-        payload.target_lang,
-        article_id=str(article_id),
-        field="content",
-    )
+    try:
+        title, title_cached = await service.translate_on_demand(
+            article.title_original,
+            article.language,
+            payload.target_lang,
+            article_id=str(article_id),
+            field="title",
+        )
+        content, content_cached = await service.translate_on_demand(
+            article.content_original,
+            article.language,
+            payload.target_lang,
+            article_id=str(article_id),
+            field="content",
+        )
+    except TranslationError as exc:
+        raise ApiError("translation_failed", str(exc), 502) from exc
     if payload.target_lang == "en":
         article.title_translated = title
         article.content_translated = content

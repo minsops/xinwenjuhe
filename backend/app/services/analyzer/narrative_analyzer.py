@@ -22,7 +22,14 @@ class NarrativeAnalyzer:
 5. 情感基调
 6. 关键措辞选择
 
-以 JSON 格式输出。
+以 JSON 格式输出，所有字段值必须使用简体中文。
+字段：
+- frames: 简体中文短标签数组
+- angle: 简体中文核心角度
+- emphasis: 简体中文数组
+- downplayed: 简体中文数组
+- tone: 简体中文
+- wording: 简体中文数组
 """
 
     def __init__(self, llm: LLMProvider | None = None) -> None:
@@ -49,7 +56,7 @@ class NarrativeAnalyzer:
         """Normalize LLM frame output into the documented frontend structure."""
         if not isinstance(row, dict):
             row = {}
-        frames = row.get("frames") or row.get("dominant_frames") or row.get("主导框架") or ["news_report"]
+        frames = row.get("frames") or row.get("dominant_frames") or row.get("主导框架") or ["一般新闻报道"]
         if isinstance(frames, str):
             frames = [frames]
         emphasis = row.get("emphasis") or row.get("强调点") or []
@@ -58,10 +65,23 @@ class NarrativeAnalyzer:
         return {
             "source_id": str(article.source_id),
             "article_id": str(article.id),
-            "frames": [str(frame) for frame in frames if str(frame).strip()] or ["news_report"],
-            "angle": str(row.get("angle") or row.get("核心叙事角度") or "factual report"),
+            "frames": [_zh_frame(str(frame)) for frame in frames if str(frame).strip()] or ["一般新闻报道"],
+            "angle": str(row.get("angle") or row.get("核心叙事角度") or "事实报道"),
             "emphasis": emphasis if isinstance(emphasis, list) else [str(emphasis)],
             "downplayed": downplayed if isinstance(downplayed, list) else [str(downplayed)],
-            "tone": str(row.get("tone") or row.get("情感基调") or "neutral"),
+            "tone": _zh_frame(str(row.get("tone") or row.get("情感基调") or "中性")),
             "wording": wording if isinstance(wording, list) else [str(wording)],
         }
+
+
+def _zh_frame(value: str) -> str:
+    labels = {
+        "news_report": "一般新闻报道",
+        "factual report": "事实报道",
+        "neutral": "中性",
+        "critical": "批评",
+        "alleged": "指称",
+        "conflict": "冲突",
+        "official_statement": "官方表述",
+    }
+    return labels.get(value.strip().lower(), value)

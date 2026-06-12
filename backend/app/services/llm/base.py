@@ -51,6 +51,7 @@ class EchoLLMProvider(LLMProvider):
                     {
                         "type": "what",
                         "content": title_line,
+                        "content_en": title_line,
                         "entities": {},
                         "numbers": {},
                         "source_attribution": "unattributed",
@@ -62,15 +63,15 @@ class EchoLLMProvider(LLMProvider):
         if "框架" in user_prompt or "frame" in user_prompt.lower() or "narrative" in user_prompt.lower():
             return json.dumps(
                 {
-                    "frames": ["news_report"],
-                    "angle": "factual report",
+                    "frames": ["一般新闻报道"],
+                    "angle": "事实报道",
                     "emphasis": [],
                     "downplayed": [],
-                    "tone": "neutral",
+                    "tone": "中性",
                     "wording": [],
                 },
                 ensure_ascii=False,
             )
         if "概要" in user_prompt or "summary" in user_prompt.lower() or "编辑" in user_prompt:
-            return "Multiple sources report the event with varying details. Key facts remain under verification."
+            return "多个来源报道了同一事件，但关键细节仍需进一步核实。"
         return "{}"

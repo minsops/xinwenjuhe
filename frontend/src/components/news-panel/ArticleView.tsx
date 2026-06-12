@@ -11,12 +11,13 @@ type Props = {
   loading: boolean;
   translatedTitle?: string;
   translatedContent?: string;
+  translationError?: string;
   highlightedFact?: string;
   onTranslate: () => void;
   onReset: () => void;
 };
 
-export function ArticleView({ article, translated, loading, translatedTitle, translatedContent, highlightedFact, onTranslate, onReset }: Props) {
+export function ArticleView({ article, translated, loading, translatedTitle, translatedContent, translationError, highlightedFact, onTranslate, onReset }: Props) {
   const text = getUiText();
   if (!article) {
     return <div className="p-6 text-sm text-stone-500">{text.noArticle}</div>;
@@ -65,6 +66,11 @@ export function ArticleView({ article, translated, loading, translatedTitle, tra
       {isShortContent ? (
         <div className="mt-4 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
           {text.shortContentNotice}
+        </div>
+      ) : null}
+      {translationError ? (
+        <div className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-950 dark:border-red-800 dark:bg-red-950 dark:text-red-100">
+          {translationError}
         </div>
       ) : null}
       {highlightedFact ? (

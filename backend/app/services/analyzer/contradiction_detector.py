@@ -53,12 +53,12 @@ class ContradictionDetector:
                     Contradiction(
                         event_id=event_id,
                         contradiction_type="number_discrepancy",
-                        description=f"{field} differs by {ratio:.1f}x across sources",
+                        description=f"不同来源对{_number_field_label(field)}的说法相差约 {ratio:.1f} 倍",
                         severity="critical" if ratio >= 3 else "high",
                         fragment_ids=[item.id for item, _ in values],
                         source_ids=list({item.source_id for item, _ in values}),
                         details={
-                            "field": field,
+                            "field": _number_field_label(field),
                             "values": [
                                 {
                                     "source_id": str(item.source_id),
@@ -96,7 +96,7 @@ class ContradictionDetector:
                 Contradiction(
                     event_id=event_id,
                     contradiction_type="attribution_conflict",
-                    description=f"Sources attribute responsibility differently for {topic}",
+                    description=f"不同来源对“{topic}”的责任归属说法不一致",
                     severity=_severity_for_count(len(labels)),
                     fragment_ids=[fragment.id for fragment in involved],
                     source_ids=list({fragment.source_id for fragment in involved}),
@@ -135,7 +135,7 @@ class ContradictionDetector:
                 Contradiction(
                     event_id=event_id,
                     contradiction_type="timeline_conflict",
-                    description=f"Reported timing for {topic} differs by {delta}",
+                    description=f"不同来源对“{topic}”的发生时间说法相差 {delta}",
                     severity="high" if delta >= timedelta(days=1) else "medium",
                     fragment_ids=[item.id for item in items],
                     source_ids=list({item.source_id for item in items}),
@@ -175,7 +175,7 @@ class ContradictionDetector:
                     Contradiction(
                         event_id=event_id,
                         contradiction_type="omission",
-                        description=f"Frequently reported fact omitted by {len(source_ids - covered)} source(s)",
+                        description=f"有 {len(source_ids - covered)} 个来源没有提到其他来源频繁报道的事实",
                         severity="medium",
                         fragment_ids=fragment_ids[key],
                         source_ids=list(source_ids - covered),
@@ -204,7 +204,7 @@ class ContradictionDetector:
                 Contradiction(
                     event_id=event_id,
                     contradiction_type="framing_difference",
-                    description=f"Sources use different framing terms for {topic}",
+                    description=f"不同来源在“{topic}”上使用了不同叙事措辞",
                     severity=_severity_for_count(len(labels), default="low"),
                     fragment_ids=[fragment.id for fragment in items],
                     source_ids=list({fragment.source_id for fragment in items}),
@@ -245,7 +245,7 @@ class ContradictionDetector:
                     continue
                 emb_a = by_topic[key_a][0].embedding
                 emb_b = by_topic[key_b][0].embedding
-                if emb_a and emb_b and EventClusterer.cosine(emb_a, emb_b) > similarity_threshold:
+                if _has_vector(emb_a) and _has_vector(emb_b) and EventClusterer.cosine(emb_a, emb_b) > similarity_threshold:
                     group.extend(by_topic[key_b])
                     used.add(key_b)
             merged[key_a] = group
@@ -288,13 +288,13 @@ def _attribution_label(fragment: FactFragment) -> str | None:
 def _framing_label(text: str) -> str | None:
     normalized = _normalize(text)
     term_groups = {
-        "liberation": ("liberation", "liberated", "freedom fighter"),
-        "invasion": ("invasion", "invaded", "occupying force"),
-        "special_operation": ("special operation", "security operation", "military operation"),
-        "terrorism": ("terrorist", "terrorism", "terror attack"),
-        "militant": ("militant", "armed group", "fighter"),
-        "attack": ("attack", "strike", "assault", "bombardment"),
-        "defense": ("defense", "defensive", "retaliation"),
+        "解放叙事": ("liberation", "liberated", "freedom fighter"),
+        "入侵叙事": ("invasion", "invaded", "occupying force"),
+        "军事行动叙事": ("special operation", "security operation", "military operation"),
+        "恐怖主义叙事": ("terrorist", "terrorism", "terror attack"),
+        "武装组织叙事": ("militant", "armed group", "fighter"),
+        "袭击叙事": ("attack", "strike", "assault", "bombardment"),
+        "防御叙事": ("defense", "defensive", "retaliation"),
     }
     for label, terms in term_groups.items():
         if any(term in normalized for term in terms):
@@ -312,3 +312,18 @@ def _severity_for_count(count: int, default: str = "medium") -> str:
     if count == 3:
         return "high"
     return default
+
+
+def _number_field_label(field: str) -> str:
+    labels = {
+        "casualties": "死亡或伤亡人数",
+        "injuries": "受伤人数",
+        "damage_cost": "损失金额",
+        "distance": "距离",
+        "count": "数量",
+    }
+    return labels.get(field, field)
+
+
+def _has_vector(vector: list[float] | None) -> bool:
+    return vector is not None and len(vector) > 0

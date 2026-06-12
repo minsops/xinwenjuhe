@@ -26,6 +26,7 @@ class AnalyzerValidationTest(unittest.TestCase):
         rows = extractor._validate_fragments(
             [
                 {"type": "invalid", "content": " Officials confirmed 12 injuries. ", "entities": [], "numbers": []},
+                {"type": "invalid", "content": " 官方确认有12人受伤。 ", "content_en": "Officials confirmed 12 injuries.", "entities": [], "numbers": []},
                 {"type": "number", "content": ""},
                 "not-a-dict",
             ]
@@ -33,7 +34,7 @@ class AnalyzerValidationTest(unittest.TestCase):
 
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["type"], "what")
-        self.assertEqual(rows[0]["content"], "Officials confirmed 12 injuries.")
+        self.assertEqual(rows[0]["content"], "官方确认有12人受伤。")
         self.assertEqual(rows[0]["entities"], {})
         self.assertEqual(rows[0]["numbers"], {})
         self.assertEqual(rows[0]["source_attribution"], "unattributed")
@@ -47,7 +48,17 @@ class AnalyzerValidationTest(unittest.TestCase):
         self.assertEqual(frame["source_id"], str(article.source_id))
         self.assertEqual(frame["frames"], ["security"])
         self.assertEqual(frame["emphasis"], ["official claims"])
-        self.assertEqual(frame["tone"], "neutral")
+        self.assertEqual(frame["tone"], "中性")
+
+    def test_non_chinese_fact_content_is_rejected_for_analysis_display(self) -> None:
+        extractor = FactExtractor()
+
+        rows = extractor._validate_fragments(
+            [{"type": "what", "content": "Officials confirmed the incident.", "content_en": "Officials confirmed the incident."}],
+            language="en",
+        )
+
+        self.assertEqual(rows, [])
 
     def test_consensus_payload_records_article_count_not_source_count(self) -> None:
         event_id = uuid.uuid4()

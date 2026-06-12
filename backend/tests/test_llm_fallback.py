@@ -46,7 +46,7 @@ class LLMFallbackTest(unittest.IsolatedAsyncioTestCase):
 
         result = await provider.complete("system", "请撰写事件概要")
 
-        self.assertIn("Multiple sources report", result)
+        self.assertIn("多个来源", result)
 
 
 if __name__ == "__main__":
