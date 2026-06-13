@@ -56,8 +56,8 @@ async function translateEvents(events: Event[]): Promise<Event[]> {
       } catch {
         return {
           ...event,
-          title_zh: "中文翻译暂时不可用",
-          summary_zh: "这条事件还没有可用中文翻译。请点击“显示原文”查看原始标题和摘要。",
+          title_zh: fallbackEventTitle(event),
+          summary_zh: fallbackEventSummary(event),
           translation_error: "translation_failed"
         };
       }
@@ -82,6 +82,15 @@ function normalizeChineseFields(event: Event): Event {
     title_zh: event.title_zh ?? (isChineseText(event.title) ? event.title : undefined),
     summary_zh: event.summary_zh ?? (event.summary && isChineseText(event.summary) ? event.summary : undefined)
   };
+}
+
+function fallbackEventTitle(event: Event): string {
+  return `事件标题暂未成功翻译：${event.title_en || event.title}`;
+}
+
+function fallbackEventSummary(event: Event): string {
+  const original = event.summary || event.title_en || event.title;
+  return `这条事件还没有可用中文翻译。原始信息：${original}。请点击“显示原文”查看原始标题和摘要。`;
 }
 
 function demoEvent(): Event {

@@ -308,6 +308,9 @@ class ProjectContractsTest(unittest.TestCase):
         self.assertIn("async def _persist_event_chinese(event: Event, db: AsyncSession", events_api)
         self.assertEqual(events_api.count("_persist_event_chinese(event, db, title, summary)"), 2)
         self.assertNotIn("_persist_event_chinese(event, title, summary)", events_api)
+        self.assertIn("_event_original_title(event)", events_api)
+        self.assertIn("事件标题暂未成功翻译：{original_title}", events_api)
+        self.assertNotIn("自动翻译暂不可用，请查看原始事件标题", events_api)
 
     def test_websocket_updates_are_fanned_out_from_celery_via_redis(self) -> None:
         websocket = (BACKEND_ROOT / "app/api/v1/websocket.py").read_text(encoding="utf-8")

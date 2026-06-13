@@ -117,6 +117,10 @@ async def _persist_event_chinese(event: Event, db: AsyncSession, title: str, sum
     await db.refresh(event)
 
 
+def _event_original_title(event: Event) -> str:
+    return (event.title_en or event.title or "原始事件标题").strip()
+
+
 def _apply_event_cursor(stmt: Select, cursor: str, sort: str) -> Select:
     payload = _decode_cursor(cursor, f"events:{sort}")
     event_id = UUID(payload["id"])
@@ -269,12 +273,14 @@ async def translate_event(event_id: UUID, db: AsyncSession = Depends(get_db)):
             raise TranslationError("事件翻译结果不是可用中文")
         await _persist_event_chinese(event, db, title, summary)
     except TranslationError as exc:
+        original_title = _event_original_title(event)
         return envelope(
             {
-                "title": "自动翻译暂不可用，请查看原始事件标题",
+                "title": f"事件标题暂未成功翻译：{original_title}",
                 "summary": (
                     "自动翻译服务没有返回可用的中文事件摘要。"
                     "这通常表示还没有配置真实翻译模型，或模型返回了原文。"
+                    f"原始标题：{original_title}。"
                     "当前页面仍会显示本站生成的中文分析；原始报道可在文章区点击“显示原文”查看。"
                 ),
                 "cached": False,

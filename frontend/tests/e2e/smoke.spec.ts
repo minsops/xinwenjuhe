@@ -164,6 +164,66 @@ test("does not show stale english translation cache as Chinese", async ({ page }
   await expect(page.getByText("Old cached English body that must not appear inside the Chinese translation view.")).toHaveCount(0);
 });
 
+test("keeps event title informative when event translation fails", async ({ page }) => {
+  await page.route("**/api/v1/**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === "/api/v1/events") {
+      return route.fulfill({
+        json: {
+          data: [{
+            id: "evt-event-translation-failure",
+            title: "Original English event headline",
+            title_en: "Original English event headline",
+            summary: "Original English event summary.",
+            category: "politics",
+            region_primary: "europe",
+            status: "active",
+            article_count: 0,
+            source_count: 1,
+            language_count: 1,
+            region_count: 1,
+            heat_score: 35,
+            last_updated_at: new Date().toISOString(),
+          }],
+        },
+      });
+    }
+    if (url.pathname === "/api/v1/events/evt-event-translation-failure/translate") {
+      return route.fulfill({ status: 503, json: { detail: "translation unavailable" } });
+    }
+    if (url.pathname === "/api/v1/events/evt-event-translation-failure/articles") {
+      return route.fulfill({ json: { data: [] } });
+    }
+    if (url.pathname === "/api/v1/events/evt-event-translation-failure/analysis") {
+      return route.fulfill({
+        json: {
+          data: {
+            event_id: "evt-event-translation-failure",
+            summary: "本站暂未形成详细分析。",
+            analysis_version: 1,
+            article_count_at_analysis: 0,
+            consensus_facts: [],
+            disputed_facts: [],
+            blind_spots: [],
+            narrative_frames: [],
+            source_graph: { nodes: [], edges: [] },
+            timeline: [],
+          },
+        },
+      });
+    }
+    if (url.pathname === "/api/v1/tasks") {
+      return route.fulfill({ json: { data: { history: [], queue_depth: null } } });
+    }
+    return route.abort();
+  });
+
+  await page.goto("/");
+
+  await expect(page.locator("h1", { hasText: "事件标题暂未成功翻译：Original English event headline" })).toBeVisible();
+  await expect(page.getByText("中文翻译暂时不可用")).toHaveCount(0);
+});
+
 test("labels source original name with the source language", async ({ page }) => {
   await page.route("**/api/v1/**", (route) => {
     const url = new URL(route.request().url());
