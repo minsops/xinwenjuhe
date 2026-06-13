@@ -126,10 +126,7 @@ def notify_clients(self, payload: dict) -> dict:
 @celery.task(
     bind=True,
     name="app.tasks.analyze_task.scan_events_needing_analysis",
-    autoretry_for=(Exception,),
-    retry_backoff=True,
-    retry_backoff_max=600,
-    max_retries=3,
+    autoretry_for=(),
 )
 def scan_events_needing_analysis(self, limit: int = 20) -> dict:
     """Queue analysis for active events that lack or need refreshed analysis."""
