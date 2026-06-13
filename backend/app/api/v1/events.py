@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -23,6 +23,7 @@ from app.schemas.analysis import ContradictionRead, EventAnalysisRead
 from app.schemas.article import ArticleRead
 from app.schemas.event import EventCreate, EventMergeRequest, EventRead, EventSplitRequest
 from app.services.clustering.pipeline import EventClusteringService
+from app.services.collector.archive import ArchiveQuery, ArchiveService
 from app.services.collector.ingestion import ArticleIngestionService
 from app.services.analyzer.event_analysis_service import EventAnalysisService
 from app.services.analyzer.consensus_mapper import ConsensusMapper
@@ -330,6 +331,40 @@ async def collect_event_articles(event_id: UUID, db: AsyncSession = Depends(get_
         process_event_pipeline.delay(str(event_id))
     await notify_event_update(event_id, {"type": "articles_collected", "payload": result})
     return envelope(result)
+
+
+@router.post("/{event_id}/backfill")
+async def backfill_event_articles(
+    event_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    days_back: int = Query(7, ge=1, le=30),
+    max_results: int = Query(100, ge=1, le=500),
+):
+    event = await db.get(Event, event_id)
+    if not event:
+        raise ApiError("event_not_found", "Event not found", 404)
+
+    query = ArchiveQuery(
+        keywords=(event.title_en or event.title).split()[:8],
+        date_from=datetime.now(timezone.utc) - timedelta(days=days_back),
+        date_to=datetime.now(timezone.utc),
+        max_results=max_results,
+    )
+    raw_articles = await ArchiveService().backfill_with_fulltext(query, fetch_content=True)
+    ingestion = ArticleIngestionService(db)
+    for article in raw_articles:
+        article.source_id = await ingestion._source_for_url(article.external_url, article.language)
+    result = await ingestion.persist_articles(raw_articles, event_id=event_id)
+    await ingestion.refresh_event_stats(event_id)
+    await db.commit()
+
+    pipeline_task_id = None
+    if result["collected"] > 0 and await EventAnalysisService(db).should_reanalyze(event_id):
+        pipeline_task = process_event_pipeline.delay(str(event_id))
+        pipeline_task_id = pipeline_task.id
+    payload = {**result, "event_id": str(event_id), "days_back": days_back, "pipeline_task_id": pipeline_task_id}
+    await notify_event_update(event_id, {"type": "backfill_complete", "payload": payload})
+    return envelope(payload)
 
 
 @router.post("/{event_id}/pipeline")
