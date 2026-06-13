@@ -1,6 +1,7 @@
+import { useState } from "react";
 import type { Event } from "../../types/event";
 import { formatDate } from "../../utils/formatDate";
-import { formatCategory, formatRegion, formatStatus, getUiText } from "../../utils/i18n";
+import { formatCategory, formatLanguage, formatRegion, formatStatus, getUiText } from "../../utils/i18n";
 import { Badge } from "../shared/Badge";
 
 type Props = {
@@ -9,8 +10,12 @@ type Props = {
 
 export function EventMeta({ event }: Props) {
   const text = getUiText();
+  const [showOriginal, setShowOriginal] = useState(false);
   const hot = event.heat_score >= 70;
-  const summary = event.summary_zh ?? event.summary;
+  const title = showOriginal ? event.title_en ?? event.title : event.title_zh ?? event.title;
+  const summary = showOriginal ? event.summary ?? event.summary_zh : event.summary_zh ?? event.summary;
+  const hasOriginalEvent = Boolean(event.title_zh || event.summary_zh || event.title_en);
+  const originalLanguage = event.language_count > 1 ? "multi" : "auto";
   return (
     <section className="overflow-hidden rounded-3xl border border-white/70 bg-white/90 p-5 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-stone-950/90">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -21,10 +26,23 @@ export function EventMeta({ event }: Props) {
             <span>{formatCategory(event.category)}</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-black leading-tight tracking-tight text-stone-950 dark:text-white lg:text-3xl">{event.title_zh ?? event.title}</h1>
+            <h1 className="text-2xl font-black leading-tight tracking-tight text-stone-950 dark:text-white lg:text-3xl">{title}</h1>
             <Badge tone={hot ? "red" : "blue"}>{hot ? text.hotStatus : formatStatus(event.status)}</Badge>
           </div>
           {summary ? <p className="mt-3 max-w-4xl text-sm leading-6 text-stone-600 dark:text-stone-300">{summary}</p> : null}
+          {hasOriginalEvent ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
+              <span>{text.originalLanguage}：{formatLanguage(originalLanguage)}</span>
+              <button
+                aria-label={showOriginal ? "显示事件中文" : "显示事件原文"}
+                className="focus-ring rounded-full border border-stone-200 bg-white px-3 py-1 font-medium text-stone-700 transition hover:border-cyan-300 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200"
+                onClick={() => setShowOriginal((value) => !value)}
+                type="button"
+              >
+                {showOriginal ? text.showChinese : text.original}
+              </button>
+            </div>
+          ) : null}
         </div>
         <div className="grid min-w-[18rem] grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
           <MetricPill label={text.sources} value={event.source_count} />

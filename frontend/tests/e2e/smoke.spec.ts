@@ -10,6 +10,10 @@ test("renders TruthPuzzle dashboard", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("TruthPuzzle")).toBeVisible();
   await expect(page.locator("h1", { hasText: "边境事件出现相互矛盾的伤亡报道" })).toBeVisible();
+  await page.getByRole("button", { name: "显示事件原文" }).click();
+  await expect(page.locator("h1", { hasText: "Cross-border incident draws conflicting casualty reports" })).toBeVisible();
+  await page.getByRole("button", { name: "显示事件中文" }).click();
+  await expect(page.locator("h1", { hasText: "边境事件出现相互矛盾的伤亡报道" })).toBeVisible();
   const eventCard = page.getByRole("button", { name: /边境事件出现/ });
   if ((page.viewportSize()?.width ?? 0) >= 1280) {
     await expect(eventCard.getByText(/3 报道/)).toBeVisible();
