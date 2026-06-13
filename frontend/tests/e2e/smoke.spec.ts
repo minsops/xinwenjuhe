@@ -19,7 +19,7 @@ test("renders TruthPuzzle dashboard", async ({ page }) => {
     await expect(eventCard.getByText(/3 报道/)).toBeVisible();
     await expect(eventCard.getByText(/2 语言/)).toBeVisible();
   }
-  await expect(page.getByRole("article").getByRole("button", { name: /显示原文|显示中文/ })).toBeVisible();
+  await expect(page.getByRole("article").getByRole("button", { name: /显示原文|显示中文/ }).first()).toBeVisible();
   const categoryFilter = page.getByRole("combobox").filter({ hasText: /All categories|全部分类/ });
   if (await categoryFilter.isVisible()) {
     await expect(categoryFilter).toBeVisible();
@@ -44,7 +44,11 @@ test("renders TruthPuzzle dashboard", async ({ page }) => {
   await expect(sourceGraph.getByText("路透社 / Reuters")).toBeVisible();
   await expect(sourceGraph.getByText("伊朗伊斯兰共和国通讯社 / IRNA")).toBeVisible();
   await expect(page.getByText("原文语言：英文").first()).toBeVisible();
-  await expect(page.getByText("路透社 / Reuters").first()).toBeVisible();
+  const sourceAgency = page.getByRole("article").getByLabel("新闻机构");
+  await expect(sourceAgency.getByText("路透社")).toBeVisible();
+  await expect(sourceAgency.getByText("Reuters")).toHaveCount(0);
+  await sourceAgency.getByRole("button", { name: "显示原文" }).click();
+  await expect(sourceAgency.getByText("Reuters")).toBeVisible();
   await expect(page.getByText(/英国 \/ 欧洲 \/ 原文语言：英文/)).toBeVisible();
   await expect(page.getByText("中文翻译")).toBeVisible();
   await expect(page.getByText("自动翻译接口暂不可用：当前显示已保存的中文译文，可点击“显示原文”查看来源原文。")).toBeVisible();
@@ -62,7 +66,7 @@ test("links a consensus fact to the source article", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /夜间发生事件/ }).click();
   await expect(page.getByText("官员称夜间袭击造成 12 人死亡")).toBeVisible();
-  await page.getByRole("article").getByRole("button", { name: "显示原文" }).click();
+  await page.getByRole("article").getByRole("button", { name: "显示原文" }).first().click();
   await expect(page.getByText("Officials report 12 casualties after overnight strike")).toBeVisible();
   await expect(page.getByText("选中的事实片段")).toBeVisible();
   if ((page.viewportSize()?.width ?? 0) >= 768) {

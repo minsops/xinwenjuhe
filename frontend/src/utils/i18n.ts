@@ -384,6 +384,19 @@ export function formatSourceName(name?: string | null, nameEn?: string | null): 
   return translated === original || translated === primary ? translated : `${translated} / ${original}`;
 }
 
+export function formatSourceChineseName(name?: string | null, nameEn?: string | null): string {
+  const primary = name?.trim() || nameEn?.trim();
+  if (!primary) return getUiText().unknown;
+  const original = nameEn?.trim() || primary;
+  return zhSourceNames[primary.toLowerCase()] ?? zhSourceNames[original.toLowerCase()] ?? primary;
+}
+
+export function formatSourceOriginalName(name?: string | null, nameEn?: string | null): string | undefined {
+  const chinese = formatSourceChineseName(name, nameEn);
+  const candidates = [nameEn?.trim(), name?.trim()].filter(Boolean) as string[];
+  return candidates.find((candidate) => candidate !== chinese && candidate !== getUiText().unknown);
+}
+
 const zhLanguages: Record<string, string> = {
   auto: "自动识别",
   ar: "阿拉伯文",

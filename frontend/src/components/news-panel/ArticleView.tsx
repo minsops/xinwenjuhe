@@ -1,8 +1,10 @@
 import { ExternalLink } from "lucide-react";
+import type { ReactNode } from "react";
 import type { Article } from "../../types/article";
 import { formatDate } from "../../utils/formatDate";
-import { formatCountry, formatLanguage, formatRegion, formatSourceName, getUiText } from "../../utils/i18n";
+import { formatCountry, formatLanguage, formatRegion, formatSourceChineseName, formatSourceOriginalName, getUiText } from "../../utils/i18n";
 import { usableChineseText } from "../../utils/chineseText";
+import { OriginalText } from "../analysis-panel/OriginalText";
 import { CredibilityBadge } from "./CredibilityBadge";
 import { TranslateButton } from "./TranslateButton";
 
@@ -26,15 +28,17 @@ export function ArticleView({ article, showingChinese, loadingTranslation, trans
   if (!article) {
     return <div className="p-6 text-sm text-stone-500">{text.noArticle}</div>;
   }
+  const source = article.source;
   const savedChineseTitle = usableChineseText(article.title_translated);
   const savedChineseContent = usableChineseText(article.content_translated);
+  const sourceChineseName = formatSourceChineseName(source?.name, source?.name_en);
+  const sourceOriginalName = formatSourceOriginalName(source?.name, source?.name_en);
   const title = showingChinese
     ? translatedTitle ?? savedChineseTitle ?? (loadingTranslation ? "正在翻译标题..." : "这篇报道暂时没有可用的中文标题")
     : article.title_original;
   const content = showingChinese
     ? translatedContent ?? savedChineseContent ?? (loadingTranslation ? "正在翻译正文..." : "自动翻译服务暂不可用，系统没有拿到可用的中文正文。你可以点击“显示原文”查看来源原文，原文语言已在文章信息中标注。")
     : article.content_original;
-  const source = article.source;
   const isShortContent = article.content_original.trim().length < 180;
   const normalizedFact = highlightedFact?.trim().toLowerCase();
   const paragraphs = articleParagraphs(content);
@@ -63,7 +67,14 @@ export function ArticleView({ article, showingChinese, loadingTranslation, trans
         <div className="mt-3 text-xs text-stone-500">{text.originalLanguage}：{formatLanguage(article.language || source?.language)}</div>
         <h2 className="mt-2 text-2xl font-black leading-tight tracking-tight text-stone-950 dark:text-white lg:text-3xl">{title}</h2>
         <div className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-          <MetaItem label={text.sourceAgency} value={formatSourceName(source?.name, source?.name_en)} />
+          <MetaItem label={text.sourceAgency}>
+            <OriginalText
+              className="font-semibold text-stone-800 dark:text-stone-100"
+              text={sourceChineseName}
+              original={sourceOriginalName}
+              originalLanguage="en"
+            />
+          </MetaItem>
           <MetaItem label={text.sourceCountry} value={formatCountry(source?.country)} />
           <MetaItem label={text.sourceRegion} value={formatRegion(source?.region)} />
           <MetaItem label={text.sourceLanguage} value={formatLanguage(article.language || source?.language)} />
@@ -123,11 +134,11 @@ export function ArticleView({ article, showingChinese, loadingTranslation, trans
   );
 }
 
-function MetaItem({ label, value }: { label: string; value: string }) {
+function MetaItem({ label, value, children }: { label: string; value?: string; children?: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-3 dark:border-stone-800 dark:bg-stone-950">
+    <div aria-label={label} className="rounded-2xl border border-stone-200 bg-white p-3 dark:border-stone-800 dark:bg-stone-950">
       <div className="text-xs text-stone-500">{label}</div>
-      <div className="mt-1 font-semibold text-stone-800 dark:text-stone-100">{value}</div>
+      <div className="mt-1 font-semibold text-stone-800 dark:text-stone-100">{children ?? value}</div>
     </div>
   );
 }
