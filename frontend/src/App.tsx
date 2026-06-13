@@ -84,7 +84,7 @@ export default function App() {
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <select
-                  aria-label="Selected event"
+                  aria-label="选择事件"
                   className={mobileSelectClass}
                   value={selected?.id ?? ""}
                   onChange={(event) => {
@@ -99,7 +99,7 @@ export default function App() {
                   ))}
                 </select>
                 <select
-                  aria-label="Sort events"
+                  aria-label="事件排序"
                   className={mobileSelectClass}
                   value={sort}
                   onChange={(event) => setSort(event.target.value as "heat" | "latest")}
@@ -108,7 +108,7 @@ export default function App() {
                   <option value="latest">{text.latest}</option>
                 </select>
                 <select
-                  aria-label="Filter by region"
+                  aria-label="按地区筛选"
                   className={mobileSelectClass}
                   value={regionFilter}
                   onChange={(event) => setRegionFilter(event.target.value)}
@@ -124,7 +124,7 @@ export default function App() {
                   <option value="russia_cis">{formatRegion("russia_cis")}</option>
                 </select>
                 <select
-                  aria-label="Filter by category"
+                  aria-label="按分类筛选"
                   className={mobileSelectClass}
                   value={categoryFilter}
                   onChange={(event) => setCategoryFilter(event.target.value)}

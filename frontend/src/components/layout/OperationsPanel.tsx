@@ -13,11 +13,51 @@ type Props = {
 export function OperationsPanel({ overview }: Props) {
   const text = getUiText();
   const [lastTask, setLastTask] = useState<string | undefined>();
+  const [runningAction, setRunningAction] = useState<string | undefined>();
+  const [error, setError] = useState<string | undefined>();
   const recent = overview.history.slice(0, 5);
-  async function run(action: () => Promise<{ task_id: string }>) {
-    const result = await action();
-    setLastTask(result.task_id);
+
+  const actions = [
+    {
+      key: "collect",
+      label: text.collectSources,
+      description: text.collectSourcesHelp,
+      run: startCollectActiveSources,
+    },
+    {
+      key: "cluster",
+      label: text.clusterArticles,
+      description: text.clusterArticlesHelp,
+      run: startClusterNewArticles,
+    },
+    {
+      key: "hot-events",
+      label: text.collectHotEvents,
+      description: text.collectHotEventsHelp,
+      run: startCollectHotEvents,
+    },
+    {
+      key: "credibility",
+      label: text.refreshCredibility,
+      description: text.refreshCredibilityHelp,
+      run: refreshSourceCredibility,
+    },
+  ];
+
+  async function run(actionKey: string, action: () => Promise<{ task_id: string }>) {
+    if (runningAction) return;
+    setRunningAction(actionKey);
+    setError(undefined);
+    try {
+      const result = await action();
+      setLastTask(result.task_id);
+    } catch {
+      setError(text.taskSubmitFailed);
+    } finally {
+      setRunningAction(undefined);
+    }
   }
+
   return (
     <section className="border-b border-stone-300 bg-white p-3 dark:border-stone-700 dark:bg-stone-900">
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -31,35 +71,28 @@ export function OperationsPanel({ overview }: Props) {
       </div>
       <div className="mb-3 text-xs leading-5 text-stone-500 dark:text-stone-400">{text.operationsSubtitle}</div>
       <div className="mb-3 grid gap-2">
-        <button
-          className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded border border-stone-300 px-3 py-2 text-xs dark:border-stone-700"
-          onClick={() => void run(startCollectActiveSources)}
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          {text.collectSources}
-        </button>
-        <button
-          className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded border border-stone-300 px-3 py-2 text-xs dark:border-stone-700"
-          onClick={() => void run(startClusterNewArticles)}
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          {text.clusterArticles}
-        </button>
-        <button
-          className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded border border-stone-300 px-3 py-2 text-xs dark:border-stone-700"
-          onClick={() => void run(startCollectHotEvents)}
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          {text.collectHotEvents}
-        </button>
-        <button
-          className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded border border-stone-300 px-3 py-2 text-xs dark:border-stone-700"
-          onClick={() => void run(refreshSourceCredibility)}
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          {text.refreshCredibility}
-        </button>
-        {lastTask ? <div className="truncate text-xs text-stone-500">{text.queuedTask} {lastTask}</div> : null}
+        {actions.map((item) => {
+          const isRunning = runningAction === item.key;
+          return (
+            <button
+              key={item.key}
+              className="focus-ring w-full rounded border border-stone-300 bg-stone-50 px-3 py-2 text-left transition hover:border-cyan-300 hover:bg-cyan-50 disabled:cursor-wait disabled:opacity-70 dark:border-stone-700 dark:bg-stone-950 dark:hover:border-cyan-700 dark:hover:bg-cyan-950/40"
+              onClick={() => void run(item.key, item.run)}
+              disabled={Boolean(runningAction)}
+              title={item.description}
+            >
+              <span className="flex items-center justify-between gap-2 text-xs font-semibold text-stone-800 dark:text-stone-100">
+                <span className="inline-flex min-w-0 items-center gap-2">
+                  <RefreshCw className={`h-3.5 w-3.5 shrink-0 ${isRunning ? "animate-spin" : ""}`} />
+                  <span className="truncate">{isRunning ? text.submittingTask : item.label}</span>
+                </span>
+              </span>
+              <span className="mt-1 block text-xs leading-5 text-stone-500 dark:text-stone-400">{item.description}</span>
+            </button>
+          );
+        })}
+        {error ? <div className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">{error}</div> : null}
+        {lastTask ? <div className="truncate text-xs text-stone-500">{text.queuedTask} <span className="font-mono">{lastTask}</span></div> : null}
       </div>
       <div className="mb-2 text-xs font-medium text-stone-500 dark:text-stone-400">{text.recentTasks}</div>
       <div className="space-y-2">

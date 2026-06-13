@@ -41,7 +41,7 @@ export function EventList({
   return (
     <nav className="soft-scrollbar sticky top-20 hidden max-h-[calc(100vh-6rem)] w-[22rem] shrink-0 overflow-y-auto rounded-3xl border border-white/70 bg-white/85 p-3 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-stone-950/85 xl:block" aria-label="事件列表">
       <div className="mb-4 overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-950 via-cyan-900 to-slate-900 p-4 text-white shadow-sm">
-        <div className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-100/80">Event Radar</div>
+        <div className="text-xs font-semibold tracking-[0.22em] text-cyan-100/80">事件雷达</div>
         <div className="mt-2 text-2xl font-black tracking-tight">事件雷达</div>
         <div className="mt-1 text-sm text-cyan-50/80">{events.length} 条事件 · 当前按{text[sort]}排序</div>
       </div>
