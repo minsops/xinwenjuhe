@@ -80,6 +80,7 @@ class ArticleIngestionService:
             except Exception as exc:
                 return {"source": source, "error": exc}
 
+        # Network collection is concurrent; persistence stays serial to avoid shared-session races.
         fetch_results = await asyncio.gather(*(fetch_one(source) for source in sources))
         for item in fetch_results:
             source = item["source"]
