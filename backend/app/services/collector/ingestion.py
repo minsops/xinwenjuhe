@@ -155,17 +155,35 @@ class ArticleIngestionService:
         collected = 0
         skipped = 0
         languages = list(GoogleNewsCollector.REGION_FEEDS.keys())
-        for language in languages:
-            raw_articles = await self.google_news.search_event(query, language)
+        semaphore = asyncio.Semaphore(settings.max_concurrent_scrapers)
+
+        async def search_language(language: str) -> dict:
+            try:
+                async with semaphore:
+                    raw_articles = await self.google_news.search_event(query, language)
+                return {"language": language, "raw_articles": raw_articles}
+            except Exception as exc:
+                return {"language": language, "raw_articles": [], "error": str(exc)}
+
+        # Network fetches are independent and slow; DB writes stay serial on this session.
+        language_results = await asyncio.gather(*(search_language(language) for language in languages))
+        persisted_languages: list[dict] = []
+        for item in language_results:
+            language = item["language"]
+            raw_articles = item["raw_articles"]
+            if item.get("error"):
+                persisted_languages.append({"language": language, "status": "failed", "error": item["error"], "collected": 0, "skipped": 0})
+                continue
             await self.persist_discovered_sources(raw_articles)
             for article in raw_articles:
                 article.source_id = await self._source_for_url(article.external_url, language)
             result = await self.persist_articles(raw_articles, event_id=event.id)
             collected += result["collected"]
             skipped += result["skipped"]
+            persisted_languages.append({"language": language, "status": "ok", **result})
         await self.refresh_event_stats(event.id)
         await self.db.commit()
-        return {"status": "ok", "event_id": str(event.id), "collected": collected, "skipped": skipped}
+        return {"status": "ok", "event_id": str(event.id), "collected": collected, "skipped": skipped, "languages": persisted_languages}
 
     async def persist_discovered_sources(self, raw_articles: list[RawArticle]) -> int:
         """Persist new source candidates discovered through collected article URLs."""
