@@ -16,6 +16,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from app.config import settings
 from app.models.source import Source
 from app.schemas.article import RawArticle
+from app.services.collector.rate_limiter import DomainRateLimiter
 
 
 class RSSCollector:
@@ -37,6 +38,7 @@ class RSSCollector:
             response.raise_for_status()
         parsed = feedparser.parse(response.content)
         semaphore = asyncio.Semaphore(self.FULLTEXT_CONCURRENCY)
+        domain_limiter = DomainRateLimiter(self.PER_DOMAIN_DELAY)
 
         async def parse_entry(entry) -> RawArticle | None:
             published_at = self._parse_date(
@@ -49,7 +51,7 @@ class RSSCollector:
                 return None
             summary = getattr(entry, "summary", "") or getattr(entry, "description", "")
             async with semaphore:
-                await asyncio.sleep(self.PER_DOMAIN_DELAY)
+                await domain_limiter.wait(link)
                 try:
                     content = await self.fetch_full_content(link)
                 except Exception:

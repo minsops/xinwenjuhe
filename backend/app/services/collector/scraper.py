@@ -17,6 +17,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from app.config import settings
 from app.models.source import Source
 from app.schemas.article import RawArticle
+from app.services.collector.rate_limiter import DomainRateLimiter
 
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,8 @@ logger = logging.getLogger(__name__)
 class WebScraper:
     """Scrape list and article pages according to per-source CSS selectors."""
 
+    FULLTEXT_CONCURRENCY = 5
+    PER_DOMAIN_DELAY = 0.5
     USER_AGENTS = [
         "TruthPuzzle/0.1 (+https://truthpuzzle.local)",
         "Mozilla/5.0 (compatible; TruthPuzzleBot/0.1; +https://truthpuzzle.local)",
@@ -56,53 +59,94 @@ class WebScraper:
                 )
         deduped_links = list(dict.fromkeys(links))
 
-        articles = []
-        for link in deduped_links[: config.get("limit", 20)]:
+        fulltext_concurrency = int(
+            config.get("fulltext_concurrency", self.FULLTEXT_CONCURRENCY)
+        )
+        request_delay = float(config.get("request_delay_seconds", self.PER_DOMAIN_DELAY))
+        semaphore = asyncio.Semaphore(fulltext_concurrency)
+        domain_limiter = DomainRateLimiter(request_delay)
+        requires_js = bool(config.get("requires_js"))
+
+        async def scrape_article(link: str) -> RawArticle | None:
             if not await self._allowed(link):
-                continue
-            await asyncio.sleep(float(config.get("request_delay_seconds", 1)))
-            requires_js = bool(config.get("requires_js"))
-            article_html = await self._fetch_page(link, requires_js=requires_js)
+                return None
+            try:
+                async with semaphore:
+                    await domain_limiter.wait(link)
+                    article_html = await self._fetch_page(link, requires_js=requires_js)
+            except Exception as exc:
+                logger.warning("Failed to scrape article %s: %s", link, exc)
+                return None
             if requires_js:
                 article_soup = BeautifulSoup(article_html, "html.parser")
                 title = self._text(article_soup, config.get("title_selector", "h1")) or "Untitled"
                 content = self._text(article_soup, config.get("content_selector", "article, main"))
                 published_text = (
-                    self._text(article_soup, config.get("date_selector", "")) if config.get("date_selector") else ""
+                    self._text(article_soup, config.get("date_selector", ""))
+                    if config.get("date_selector")
+                    else ""
                 )
-                author = self._text(article_soup, config.get("author_selector", "")) if config.get("author_selector") else None
-                image_url = self._image_url(article_soup, config.get("image_selector", "meta[property='og:image']"), link)
+                author = (
+                    self._text(article_soup, config.get("author_selector", ""))
+                    if config.get("author_selector")
+                    else None
+                )
+                image_url = self._image_url(
+                    article_soup,
+                    config.get("image_selector", "meta[property='og:image']"),
+                    link,
+                )
             else:
                 article_selector = Selector(text=article_html)
-                title = self._css_text(article_selector, config.get("title_selector", "h1")) or "Untitled"
-                content = self._css_text(article_selector, config.get("content_selector", "article, main"))
-                published_text = (
-                    self._css_text(article_selector, config.get("date_selector", "")) if config.get("date_selector") else ""
+                title = (
+                    self._css_text(article_selector, config.get("title_selector", "h1"))
+                    or "Untitled"
                 )
-                author = self._css_text(article_selector, config.get("author_selector", "")) if config.get("author_selector") else None
-                image_url = self._css_image_url(article_selector, config.get("image_selector", "meta[property='og:image']"), link)
+                content = self._css_text(
+                    article_selector,
+                    config.get("content_selector", "article, main"),
+                )
+                published_text = (
+                    self._css_text(article_selector, config.get("date_selector", ""))
+                    if config.get("date_selector")
+                    else ""
+                )
+                author = (
+                    self._css_text(article_selector, config.get("author_selector", ""))
+                    if config.get("author_selector")
+                    else None
+                )
+                image_url = self._css_image_url(
+                    article_selector,
+                    config.get("image_selector", "meta[property='og:image']"),
+                    link,
+                )
             published_at = self._parse_date(
                 published_text,
                 config.get("date_format"),
             )
-            if content:
-                articles.append(
-                    RawArticle(
-                        source_id=source.id,
-                        external_url=link,
-                        title_original=title,
-                        content_original=content,
-                        language=source.language,
-                        published_at=published_at,
-                        author=author,
-                        image_url=image_url,
-                        metadata={
-                            "scraper": True,
-                            "requires_js": bool(config.get("requires_js")),
-                            "engine": "playwright" if config.get("requires_js") else "scrapy",
-                        },
-                    )
-                )
+            if not content:
+                return None
+            return RawArticle(
+                source_id=source.id,
+                external_url=link,
+                title_original=title,
+                content_original=content,
+                language=source.language,
+                published_at=published_at,
+                author=author,
+                image_url=image_url,
+                metadata={
+                    "scraper": True,
+                    "requires_js": bool(config.get("requires_js")),
+                    "engine": "playwright" if config.get("requires_js") else "scrapy",
+                },
+            )
+
+        article_rows = await asyncio.gather(
+            *(scrape_article(link) for link in deduped_links[: config.get("limit", 20)])
+        )
+        articles = [article for article in article_rows if article is not None]
         if not articles and source.scraper_config:
             logger.warning(
                 "Scraper returned 0 articles for %s (%s); selectors may be outdated",
