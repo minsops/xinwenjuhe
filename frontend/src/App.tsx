@@ -14,6 +14,9 @@ import { useEvent } from "./hooks/useEvent";
 import { useTaskProgress } from "./hooks/useTaskProgress";
 import { formatRegion, getUiText } from "./utils/i18n";
 
+const mobileSelectClass =
+  "focus-ring h-11 min-w-0 rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-800 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-100";
+
 export default function App() {
   const text = getUiText();
   const [darkMode, setDarkMode] = useState(false);
@@ -54,9 +57,9 @@ export default function App() {
 
   return (
     <div className={darkMode ? "dark" : ""}>
-      <div className="min-h-screen bg-paper text-ink dark:bg-stone-950 dark:text-stone-50">
+      <div className="min-h-screen bg-[#f3f7f8] text-ink dark:bg-stone-950 dark:text-stone-50">
         <TopBar darkMode={darkMode} onToggleDarkMode={() => setDarkMode((value) => !value)} search={search} onSearch={setSearch} />
-        <div className="flex">
+        <div className="mx-auto flex w-full max-w-[1920px] gap-4 px-3 py-4 sm:px-5">
           <EventList
             events={filteredEvents}
             selectedId={selected?.id}
@@ -71,12 +74,18 @@ export default function App() {
             onCategoryChange={setCategoryFilter}
             onSortChange={setSort}
           />
-          <div className="min-w-0 flex-1">
-            <div className="border-b border-stone-300 bg-stone-100 p-3 dark:border-stone-700 dark:bg-stone-950 xl:hidden">
+          <div className="min-w-0 flex-1 space-y-4">
+            <div className="rounded-2xl border border-stone-200 bg-white/90 p-3 shadow-sm dark:border-stone-800 dark:bg-stone-950/90 xl:hidden">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-civic dark:text-cyan-200">事件筛选</div>
+                  <div className="text-sm text-stone-500 dark:text-stone-400">{filteredEvents.length} 条匹配结果</div>
+                </div>
+              </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <select
                   aria-label="Selected event"
-                  className="focus-ring h-10 min-w-0 rounded border border-stone-300 bg-white px-3 text-sm dark:border-stone-700 dark:bg-stone-900"
+                  className={mobileSelectClass}
                   value={selected?.id ?? ""}
                   onChange={(event) => {
                     const next = filteredEvents.find((item) => item.id === event.target.value);
@@ -91,7 +100,7 @@ export default function App() {
                 </select>
                 <select
                   aria-label="Sort events"
-                  className="focus-ring h-10 rounded border border-stone-300 bg-white px-3 text-sm dark:border-stone-700 dark:bg-stone-900"
+                  className={mobileSelectClass}
                   value={sort}
                   onChange={(event) => setSort(event.target.value as "heat" | "latest")}
                 >
@@ -100,7 +109,7 @@ export default function App() {
                 </select>
                 <select
                   aria-label="Filter by region"
-                  className="focus-ring h-10 rounded border border-stone-300 bg-white px-3 text-sm dark:border-stone-700 dark:bg-stone-900"
+                  className={mobileSelectClass}
                   value={regionFilter}
                   onChange={(event) => setRegionFilter(event.target.value)}
                 >
@@ -116,7 +125,7 @@ export default function App() {
                 </select>
                 <select
                   aria-label="Filter by category"
-                  className="focus-ring h-10 rounded border border-stone-300 bg-white px-3 text-sm dark:border-stone-700 dark:bg-stone-900"
+                  className={mobileSelectClass}
                   value={categoryFilter}
                   onChange={(event) => setCategoryFilter(event.target.value)}
                 >
@@ -130,12 +139,12 @@ export default function App() {
               </div>
             </div>
             {selected ? <EventMeta event={selected} /> : null}
-            <div className="xl:hidden">
+            <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-950 xl:hidden">
               <OperationsPanel overview={taskOverview} />
             </div>
             {live.message ? (
-              <div className="border-b border-cyan-200 bg-cyan-50 px-4 py-2 text-sm text-cyan-950 dark:border-cyan-900 dark:bg-cyan-950 dark:text-cyan-100">
-                {live.message.type ?? "event_update"}
+              <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-medium text-cyan-950 shadow-sm dark:border-cyan-900 dark:bg-cyan-950 dark:text-cyan-100">
+                实时更新 · {live.message.type ?? "event_update"}
               </div>
             ) : null}
             <DualPanelLayout

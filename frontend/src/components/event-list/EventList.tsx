@@ -20,6 +20,9 @@ type Props = {
   onSortChange: (sort: "heat" | "latest") => void;
 };
 
+const selectClass =
+  "focus-ring h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-800 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-100";
+
 export function EventList({
   events,
   selectedId,
@@ -36,22 +39,23 @@ export function EventList({
 }: Props) {
   const text = getUiText();
   return (
-    <nav className="hidden w-80 shrink-0 overflow-y-auto border-r border-stone-300 bg-stone-100 p-3 dark:border-stone-700 dark:bg-stone-950 xl:block">
+    <nav className="soft-scrollbar sticky top-20 hidden max-h-[calc(100vh-6rem)] w-[22rem] shrink-0 overflow-y-auto rounded-3xl border border-white/70 bg-white/85 p-3 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-stone-950/85 xl:block" aria-label="事件列表">
+      <div className="mb-4 overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-950 via-cyan-900 to-slate-900 p-4 text-white shadow-sm">
+        <div className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-100/80">Event Radar</div>
+        <div className="mt-2 text-2xl font-black tracking-tight">事件雷达</div>
+        <div className="mt-1 text-sm text-cyan-50/80">{events.length} 条事件 · 当前按{text[sort]}排序</div>
+      </div>
       <div className="relative mb-3">
-        <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-stone-500" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
         <input
-          className="focus-ring h-9 w-full rounded border border-stone-300 bg-white pl-9 pr-3 text-sm dark:border-stone-700 dark:bg-stone-900"
+          className="focus-ring h-11 w-full rounded-2xl border border-stone-200 bg-stone-50/90 pl-10 pr-3 text-sm shadow-inner placeholder:text-stone-400 dark:border-stone-800 dark:bg-stone-900/90"
           value={search}
           onChange={(event) => onSearch(event.target.value)}
           placeholder={text.searchEvents}
         />
       </div>
-      <div className="mb-3 grid grid-cols-2 gap-2">
-        <select
-          className="focus-ring rounded border border-stone-300 bg-white px-2 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
-          value={region}
-          onChange={(event) => onRegionChange(event.target.value)}
-        >
+      <div className="mb-4 grid grid-cols-2 gap-2">
+        <select className={selectClass} value={region} onChange={(event) => onRegionChange(event.target.value)}>
           <option value="">{text.allRegions}</option>
           <option value="north_america">{formatRegion("north_america")}</option>
           <option value="europe">{formatRegion("europe")}</option>
@@ -62,11 +66,7 @@ export function EventList({
           <option value="latin_america">{formatRegion("latin_america")}</option>
           <option value="russia_cis">{formatRegion("russia_cis")}</option>
         </select>
-        <select
-          className="focus-ring rounded border border-stone-300 bg-white px-2 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
-          value={category}
-          onChange={(event) => onCategoryChange(event.target.value)}
-        >
+        <select className={selectClass} value={category} onChange={(event) => onCategoryChange(event.target.value)}>
           <option value="">{text.allCategories}</option>
           <option value="conflict">{text.conflict}</option>
           <option value="politics">{text.politics}</option>
@@ -74,21 +74,22 @@ export function EventList({
           <option value="disaster">{text.disaster}</option>
           <option value="technology">{text.technology}</option>
         </select>
-        <select
-          className="focus-ring col-span-2 rounded border border-stone-300 bg-white px-2 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
-          value={sort}
-          onChange={(event) => onSortChange(event.target.value as "heat" | "latest")}
-        >
+        <select className={`${selectClass} col-span-2`} value={sort} onChange={(event) => onSortChange(event.target.value as "heat" | "latest")}>
           <option value="heat">{text.heat}</option>
           <option value="latest">{text.latest}</option>
         </select>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {events.map((event) => (
           <EventCard key={event.id} event={event} selected={event.id === selectedId} onSelect={() => onSelect(event)} />
         ))}
+        {!events.length ? (
+          <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-4 text-sm text-stone-500 dark:border-stone-800 dark:bg-stone-900/60 dark:text-stone-400">
+            没有找到匹配事件，试试清空搜索或筛选条件。
+          </div>
+        ) : null}
       </div>
-      {taskOverview ? <div className="mt-3"><OperationsPanel overview={taskOverview} /></div> : null}
+      {taskOverview ? <div className="mt-4 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-950"><OperationsPanel overview={taskOverview} /></div> : null}
     </nav>
   );
 }

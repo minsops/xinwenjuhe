@@ -65,11 +65,11 @@ export function NewsPanel({ articles, selectedArticleId, highlightedFact, onArti
   }
 
   return (
-    <div className="h-full bg-white dark:bg-stone-950">
+    <div className="soft-scrollbar h-full overflow-y-auto bg-white dark:bg-stone-950">
       {articles.length ? (
         <SourceTabs articles={articles} selectedId={selected?.id} onSelect={(id) => { setSelectedId(id); setShowingChinese(true); setTranslationError(undefined); onArticleSelect?.(id); }} />
       ) : null}
-      {!articles.length ? <Skeleton lines={8} /> : null}
+      {!articles.length ? <div className="p-5"><Skeleton lines={8} /></div> : null}
       <ArticleView
         article={selected}
         showingChinese={showingChinese}
