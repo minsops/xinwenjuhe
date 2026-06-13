@@ -255,7 +255,7 @@ async def _extract_facts(task_id: str, event_id: str, payload: dict | list) -> d
             select(func.count()).select_from(FactFragment).where(FactFragment.event_id == UUID(event_id))
         )
         await db.commit()
-    total = (total_fragments or 0) + len(fragments)
+    total = total_fragments or 0
     set_progress(task_id, status="complete", step="extract_facts", new_fragments=len(fragments), total_fragments=total, event_id=event_id)
     return {"event_id": event_id, "new_fragments": len(fragments), "facts_extracted": total, "previous": payload}
 

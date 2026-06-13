@@ -63,6 +63,7 @@ class WorkflowFixesTest(unittest.TestCase):
         self.assertIn("already_extracted", extract_body)
         self.assertIn("Article.id.not_in(already_extracted)", extract_body)
         self.assertNotIn("delete(FactFragment).where(FactFragment.event_id", extract_body)
+        self.assertNotIn("+ len(fragments)", extract_body)
 
     def test_fallback_extracts_title_and_only_casualty_context_not_year(self) -> None:
         article = Article(
