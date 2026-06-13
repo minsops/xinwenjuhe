@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.core.errors import ApiError, envelope
+from app.services.collector.quality import list_collection_metrics as list_recent_collection_metrics
 from app.tasks.cluster_task import cluster_new_articles
 from app.tasks.collect_task import collect_active_sources, collect_hot_events
 from app.tasks.credibility_task import refresh_source_credibility
@@ -38,6 +39,13 @@ async def list_task_dead_letters(limit: int = 50):
 async def list_collection_source_alerts(limit: int = 50):
     """Return source collection alerts such as automatic deactivation."""
     return envelope({"source_alerts": list_source_alerts(limit=limit)}, limit=limit)
+
+
+@router.get("/collection-metrics")
+async def list_collection_quality_metrics(limit: int = 50):
+    """Return recent source collection quality metrics."""
+    rows = await list_recent_collection_metrics(limit=limit)
+    return envelope(rows, limit=limit)
 
 
 @router.get("/{task_id}")

@@ -18,6 +18,7 @@ from app.models.source import Source
 from app.schemas.article import RawArticle
 from app.services.collector.api_collector import APICollector
 from app.services.collector.google_news import GoogleNewsCollector
+from app.services.collector.quality import build_collection_metrics, record_collection_metrics
 from app.services.collector.rss_collector import RSSCollector
 from app.services.collector.scraper import WebScraper
 from app.services.collector.source_registry import update_collection_failure, update_collection_success
@@ -45,11 +46,13 @@ class ArticleIngestionService:
         try:
             raw_articles = await self._fetch_source_articles(source)
             result = await self.persist_articles(raw_articles, fallback_source=source, event_id=event_id)
+            await record_collection_metrics(build_collection_metrics(source, raw_articles, result))
             source.last_collected_at = datetime.now(timezone.utc)
             update_collection_success(source)
             await self.db.commit()
             return {"source_id": str(source.id), "status": "ok", **result}
         except Exception as exc:
+            await record_collection_metrics(build_collection_metrics(source, [], fulltext_fetch_errors=1))
             deactivated = update_collection_failure(source)
             if deactivated:
                 record_source_alert(
@@ -89,6 +92,7 @@ class ArticleIngestionService:
                 continue
             if item.get("error"):
                 exc = item["error"]
+                await record_collection_metrics(build_collection_metrics(source, [], fulltext_fetch_errors=1))
                 deactivated = update_collection_failure(source)
                 if deactivated:
                     record_source_alert(
@@ -110,11 +114,13 @@ class ArticleIngestionService:
                 continue
             try:
                 result = await self.persist_articles(item["raw_articles"], fallback_source=source)
+                await record_collection_metrics(build_collection_metrics(source, item["raw_articles"], result))
                 source.last_collected_at = datetime.now(timezone.utc)
                 update_collection_success(source)
                 await self.db.commit()
                 results.append({"source_id": str(source.id), "status": "ok", **result})
             except Exception as exc:
+                await record_collection_metrics(build_collection_metrics(source, item["raw_articles"], fulltext_fetch_errors=1))
                 deactivated = update_collection_failure(source)
                 if deactivated:
                     record_source_alert(
