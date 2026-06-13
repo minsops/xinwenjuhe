@@ -30,6 +30,8 @@ test("renders TruthPuzzle dashboard", async ({ page }) => {
   await expect(page.getByText("原文语言：英文").first()).toBeVisible();
   await expect(page.getByText("路透社 / Reuters").first()).toBeVisible();
   await expect(page.getByText(/英国 \/ 欧洲 \/ 原文语言：英文/)).toBeVisible();
+  await expect(page.getByText("原文报道")).toBeVisible();
+  await expect(page.getByText("翻译失败：翻译服务没有返回可用的中文。")).toBeVisible();
   await expect(page.getByRole("button", { name: "查看对应报道：夜间发生事件，当地应急力量随后介入。" })).toBeVisible();
 });
 

@@ -52,6 +52,7 @@ export function NewsPanel({ articles, selectedArticleId, highlightedFact, onArti
       const result = await translateArticle(article.id, "zh");
       setTranslatedByArticle((current) => ({ ...current, [article.id]: { title: result.title, content: result.content } }));
     } catch {
+      setShowingChinese(false);
       setTranslationError("翻译失败：翻译服务没有返回可用的中文。");
     } finally {
       setLoading(false);
