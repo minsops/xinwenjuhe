@@ -8,7 +8,11 @@ import unittest
 if not find_spec("redis"):
     raise unittest.SkipTest("backend runtime dependencies are not installed")
 
-from app.services.processor.translator import TranslationError, TranslationService
+from app.services.processor.translator import (
+    TRANSLATION_CACHE_VERSION,
+    TranslationError,
+    TranslationService,
+)
 
 
 class TranslationServiceTest(unittest.TestCase):
@@ -17,12 +21,12 @@ class TranslationServiceTest(unittest.TestCase):
     def test_article_translation_cache_key_includes_article_field_and_target(self) -> None:
         key = TranslationService.cache_key("hello", "zh", article_id="article-1", field="title")
 
-        self.assertEqual(key, "translate:v2:article-1:title:zh")
+        self.assertEqual(key, f"translate:{TRANSLATION_CACHE_VERSION}:article-1:title:zh")
 
     def test_text_hash_fallback_cache_key_is_stable(self) -> None:
         key = TranslationService.cache_key("hello", "zh")
 
-        self.assertTrue(key.startswith("translate:v2:"))
+        self.assertTrue(key.startswith(f"translate:{TRANSLATION_CACHE_VERSION}:"))
         self.assertTrue(key.endswith(":zh"))
         self.assertNotIn("article-1", key)
 
