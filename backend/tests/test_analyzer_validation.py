@@ -50,6 +50,9 @@ class AnalyzerValidationTest(unittest.TestCase):
         self.assertEqual(frame["emphasis"], ["official claims"])
         self.assertEqual(frame["tone"], "中性")
 
+        fallback = NarrativeAnalyzer._validate_frame({"frames": "unmapped_external_pressure"}, article)
+        self.assertEqual(fallback["frames"], ["其他框架"])
+
     def test_non_chinese_fact_content_is_rejected_for_analysis_display(self) -> None:
         extractor = FactExtractor()
 

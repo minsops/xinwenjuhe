@@ -64,7 +64,8 @@ function formatFrameLabel(value: string): string {
     accountability: "追责叙事"
   };
   if (labels[normalized]) return labels[normalized];
-  if (normalized.includes("_")) return normalized.split("_").join(" ");
+  if (normalized.includes("_")) return "其他框架";
+  if (/[a-z]/i.test(value)) return "其他框架";
   return value;
 }
 

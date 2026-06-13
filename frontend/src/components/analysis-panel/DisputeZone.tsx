@@ -32,6 +32,7 @@ export function DisputeZone({ items }: Props) {
 }
 
 function formatDisputeType(type: string): string {
+  const normalized = type.trim().toLowerCase().replace(/[-\s]+/g, "_");
   const labels: Record<string, string> = {
     number_discrepancy: "数字不一致",
     attribution_conflict: "责任归属冲突",
@@ -39,15 +40,16 @@ function formatDisputeType(type: string): string {
     omission: "信息遗漏",
     framing_difference: "叙事框架差异"
   };
-  return labels[type] ?? type;
+  return labels[normalized] ?? "其他争议";
 }
 
 function formatSeverity(severity: string): string {
+  const normalized = severity.trim().toLowerCase();
   const labels: Record<string, string> = {
     critical: "严重",
     high: "高",
     medium: "中",
     low: "低"
   };
-  return labels[severity] ?? severity;
+  return labels[normalized] ?? "未知级别";
 }

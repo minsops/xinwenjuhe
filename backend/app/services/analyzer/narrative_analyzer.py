@@ -106,5 +106,7 @@ def _zh_frame(value: str) -> str:
     if normalized in labels:
         return labels[normalized]
     if "_" in normalized:
-        return normalized.replace("_", " ")
+        return "其他框架"
+    if any(char.isascii() and char.isalpha() for char in value):
+        return "其他框架"
     return value

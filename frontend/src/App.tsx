@@ -146,7 +146,7 @@ export default function App() {
             </div>
             {live.message ? (
               <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-medium text-cyan-950 shadow-sm dark:border-cyan-900 dark:bg-cyan-950 dark:text-cyan-100">
-                实时更新 · {live.message.type ?? "event_update"}
+                实时更新 · {formatLiveEventType(live.message.type)}
               </div>
             ) : null}
             <DualPanelLayout
@@ -195,6 +195,19 @@ function EmptyPanel({ title, description }: { title: string; description: string
       </div>
     </div>
   );
+}
+
+function formatLiveEventType(type?: string): string {
+  const labels: Record<string, string> = {
+    analysis_updated: "本站分析已更新",
+    articles_collected: "新报道已采集",
+    backfill_complete: "历史报道补全完成",
+    event_merged: "事件已合并",
+    event_split: "事件已拆分",
+    heartbeat: "连接正常",
+    message: "收到新消息",
+  };
+  return labels[type ?? ""] ?? "事件已更新";
 }
 
 function eventDisplayTitle(event: { title: string; title_zh?: string | null }): string {

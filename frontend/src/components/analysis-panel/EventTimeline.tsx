@@ -40,6 +40,7 @@ export function EventTimeline({ items = [] }: Props) {
 }
 
 function formatFragmentType(type: string): string {
+  const normalized = type.trim().toLowerCase().replace(/[-\s]+/g, "_");
   const labels: Record<string, string> = {
     what: "事件事实",
     who: "相关人物/机构",
@@ -49,5 +50,5 @@ function formatFragmentType(type: string): string {
     cause: "原因",
     consequence: "影响"
   };
-  return labels[type] ?? type;
+  return labels[normalized] ?? "其他事实";
 }
