@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnalysisPanel } from "./components/analysis-panel/AnalysisPanel";
 import { EventList } from "./components/event-list/EventList";
 import { DualPanelLayout } from "./components/layout/DualPanelLayout";
@@ -36,6 +36,13 @@ export default function App() {
   const analysis = useAnalysis(selected?.id, analysisRefreshKey);
   const taskOverview = useTaskProgress();
   const live = useEventSocket(selected?.id);
+
+  useEffect(() => {
+    if (!selected?.id || live.message?.type !== "analysis_updated") return;
+    if (live.message.event_id && live.message.event_id !== selected.id) return;
+    setAnalysisRefreshKey((value) => value + 1);
+  }, [live.message, selected?.id]);
+
   const filteredEvents = useMemo(
     () => {
       const query = search.trim().toLowerCase();
@@ -199,6 +206,7 @@ function EmptyPanel({ title, description }: { title: string; description: string
 
 function formatLiveEventType(type?: string): string {
   const labels: Record<string, string> = {
+    analysis_queued: "分析任务已加入队列",
     analysis_updated: "本站分析已更新",
     articles_collected: "新报道已采集",
     backfill_complete: "历史报道补全完成",

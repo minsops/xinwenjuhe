@@ -80,6 +80,102 @@ test("queues the event pipeline from the reanalyze button", async ({ page }) => 
   expect(queued).toBeTruthy();
 });
 
+test("refreshes analysis after a live analysis update", async ({ page }) => {
+  await page.addInitScript(() => {
+    const sockets: Array<{ onmessage?: (event: { data: string }) => void; onopen?: (event: Event) => void }> = [];
+    (window as unknown as { __mockSockets: typeof sockets }).__mockSockets = sockets;
+    (window as unknown as { __sendAnalysisUpdated: () => void }).__sendAnalysisUpdated = () => {
+      for (const socket of sockets) {
+        socket.onmessage?.({ data: JSON.stringify({ type: "analysis_updated", event_id: "evt-1" }) });
+      }
+    };
+    class MockWebSocket {
+      onclose?: (event: Event) => void;
+      onerror?: (event: Event) => void;
+      onmessage?: (event: { data: string }) => void;
+      onopen?: (event: Event) => void;
+      readyState = 0;
+      url: string;
+
+      constructor(url: string) {
+        this.url = url;
+        sockets.push(this);
+        window.setTimeout(() => {
+          this.readyState = 1;
+          this.onopen?.(new Event("open"));
+        }, 0);
+      }
+
+      close() {
+        this.readyState = 3;
+        this.onclose?.(new Event("close"));
+      }
+
+      send() {}
+    }
+    (window as unknown as { WebSocket: typeof MockWebSocket }).WebSocket = MockWebSocket;
+  });
+  let analysisCalls = 0;
+  await page.route("**/api/v1/**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === "/api/v1/events") {
+      return route.fulfill({
+        json: {
+          data: [{
+            id: "evt-1",
+            title: "测试事件",
+            summary: "用于验证实时更新。",
+            category: "conflict",
+            region_primary: "europe",
+            status: "active",
+            article_count: 1,
+            source_count: 1,
+            language_count: 1,
+            region_count: 1,
+            heat_score: 50,
+            last_updated_at: new Date().toISOString(),
+          }],
+        },
+      });
+    }
+    if (url.pathname === "/api/v1/events/evt-1/articles") {
+      return route.fulfill({ json: { data: [] } });
+    }
+    if (url.pathname === "/api/v1/events/evt-1/analysis") {
+      analysisCalls += 1;
+      return route.fulfill({
+        json: {
+          data: {
+            event_id: "evt-1",
+            summary: analysisCalls === 1 ? "旧分析摘要" : "新分析摘要",
+            analysis_version: analysisCalls,
+            article_count_at_analysis: 1,
+            consensus_facts: [],
+            disputed_facts: [],
+            blind_spots: [],
+            narrative_frames: [],
+            source_graph: { nodes: [], edges: [] },
+            timeline: [],
+          },
+        },
+      });
+    }
+    if (url.pathname === "/api/v1/tasks") {
+      return route.fulfill({ json: { data: { history: [], queue_depth: null } } });
+    }
+    return route.abort();
+  });
+
+  await page.goto("/");
+
+  await expect(page.getByText("旧分析摘要")).toBeVisible();
+  await page.waitForFunction(() => (window as unknown as { __mockSockets?: unknown[] }).__mockSockets?.length);
+  await page.evaluate(() => (window as unknown as { __sendAnalysisUpdated: () => void }).__sendAnalysisUpdated());
+  await expect(page.getByText("实时更新 · 本站分析已更新")).toBeVisible();
+  await expect(page.getByText("新分析摘要")).toBeVisible();
+  expect(analysisCalls).toBeGreaterThanOrEqual(2);
+});
+
 test("exposes event selection and filters on mobile", async ({ page }) => {
   await useDemoData(page);
   await page.setViewportSize({ width: 390, height: 844 });
