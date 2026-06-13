@@ -34,7 +34,9 @@ export function TopBar({ darkMode, onToggleDarkMode, search, onSearch }: Props) 
         <button
           className="focus-ring grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-stone-200 bg-white text-stone-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow dark:border-stone-800 dark:bg-stone-900 dark:text-stone-100"
           onClick={onToggleDarkMode}
-          title="Toggle theme"
+          aria-label={text.themeToggle}
+          title={text.themeToggle}
+          type="button"
         >
           {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </button>

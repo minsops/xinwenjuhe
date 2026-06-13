@@ -40,8 +40,8 @@ test("renders TruthPuzzle dashboard", async ({ page }) => {
   await expect(page.getByText("原文语言：英文").first()).toBeVisible();
   await expect(page.getByText("路透社 / Reuters").first()).toBeVisible();
   await expect(page.getByText(/英国 \/ 欧洲 \/ 原文语言：英文/)).toBeVisible();
-  await expect(page.getByText("原文报道")).toBeVisible();
-  await expect(page.getByText("翻译失败：翻译服务没有返回可用的中文。")).toBeVisible();
+  await expect(page.getByText("中文翻译")).toBeVisible();
+  await expect(page.getByText("自动翻译接口暂不可用：当前显示已保存的中文译文，可点击“显示原文”查看来源原文。")).toBeVisible();
   await expect(page.getByRole("button", { name: "查看对应报道：夜间发生事件，当地应急力量随后介入。" })).toBeVisible();
   await page.getByRole("banner").getByRole("textbox", { name: "搜索事件" }).fill("Cross-border");
   if ((page.viewportSize()?.width ?? 0) >= 1280) {
@@ -55,6 +55,8 @@ test("links a consensus fact to the source article", async ({ page }) => {
   await useDemoData(page);
   await page.goto("/");
   await page.getByRole("button", { name: /夜间发生事件/ }).click();
+  await expect(page.getByText("官员称夜间袭击造成 12 人死亡")).toBeVisible();
+  await page.getByRole("article").getByRole("button", { name: "显示原文" }).click();
   await expect(page.getByText("Officials report 12 casualties after overnight strike")).toBeVisible();
   await expect(page.getByText("选中的事实片段")).toBeVisible();
   if ((page.viewportSize()?.width ?? 0) >= 768) {
@@ -69,10 +71,10 @@ test("exposes event selection and filters on mobile", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByLabel("选择事件")).toBeVisible();
-  await expect(page.getByLabel("事件排序")).toBeVisible();
-  await expect(page.getByLabel("按地区筛选")).toBeVisible();
-  await expect(page.getByLabel("按分类筛选")).toBeVisible();
-  await page.getByLabel("按分类筛选").selectOption("conflict");
+  await expect(page.locator("select[aria-label='事件排序']").last()).toBeVisible();
+  await expect(page.locator("select[aria-label='按地区筛选']").last()).toBeVisible();
+  await expect(page.locator("select[aria-label='按分类筛选']").last()).toBeVisible();
+  await page.locator("select[aria-label='按分类筛选']").last().selectOption("conflict");
   await expect(page.locator("h1", { hasText: "边境事件出现相互矛盾的伤亡报道" })).toBeVisible();
 });
 
@@ -105,10 +107,10 @@ test("clears stale reports when filters remove all events", async ({ page }) => 
 
   await page.goto("/");
 
-  await expect(page.getByText("Officials report 12 casualties after overnight strike")).toBeVisible();
-  await page.getByLabel("按分类筛选").selectOption("technology");
+  await expect(page.getByText("官员称夜间袭击造成 12 人死亡")).toBeVisible();
+  await page.locator("select[aria-label='按分类筛选']").last().selectOption("technology");
   await expect(page.getByText("请选择一个事件查看本站分析和来源报道。")).toBeVisible();
-  await expect(page.getByText("Officials report 12 casualties after overnight strike")).toHaveCount(0);
+  await expect(page.getByText("官员称夜间袭击造成 12 人死亡")).toHaveCount(0);
 });
 
 test("localizes unknown operation task codes", async ({ page }) => {

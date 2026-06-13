@@ -55,7 +55,7 @@ export function EventList({
         />
       </div>
       <div className="mb-4 grid grid-cols-2 gap-2">
-        <select className={selectClass} value={region} onChange={(event) => onRegionChange(event.target.value)}>
+        <select aria-label={text.regionFilter} className={selectClass} value={region} onChange={(event) => onRegionChange(event.target.value)}>
           <option value="">{text.allRegions}</option>
           <option value="north_america">{formatRegion("north_america")}</option>
           <option value="europe">{formatRegion("europe")}</option>
@@ -66,7 +66,7 @@ export function EventList({
           <option value="latin_america">{formatRegion("latin_america")}</option>
           <option value="russia_cis">{formatRegion("russia_cis")}</option>
         </select>
-        <select className={selectClass} value={category} onChange={(event) => onCategoryChange(event.target.value)}>
+        <select aria-label={text.categoryFilter} className={selectClass} value={category} onChange={(event) => onCategoryChange(event.target.value)}>
           <option value="">{text.allCategories}</option>
           <option value="conflict">{text.conflict}</option>
           <option value="politics">{text.politics}</option>
@@ -74,7 +74,7 @@ export function EventList({
           <option value="disaster">{text.disaster}</option>
           <option value="technology">{text.technology}</option>
         </select>
-        <select className={`${selectClass} col-span-2`} value={sort} onChange={(event) => onSortChange(event.target.value as "heat" | "latest")}>
+        <select aria-label={text.sortEvents} className={`${selectClass} col-span-2`} value={sort} onChange={(event) => onSortChange(event.target.value as "heat" | "latest")}>
           <option value="heat">{text.heat}</option>
           <option value="latest">{text.latest}</option>
         </select>

@@ -74,8 +74,13 @@ export function NewsPanel({ articles, hasSelectedEvent = true, selectedArticleId
         setTranslationError(result.message ?? "自动翻译暂不可用：当前显示的是中文说明，不是完整译文。");
       }
     } catch {
-      setShowingChinese(false);
-      setTranslationError("翻译失败：翻译服务没有返回可用的中文。");
+      const fallback = fallbackChineseArticle(article);
+      setTranslatedByArticle((current) => ({ ...current, [article.id]: fallback }));
+      setTranslationError(
+        article.title_translated || article.content_translated
+          ? "自动翻译接口暂不可用：当前显示已保存的中文译文，可点击“显示原文”查看来源原文。"
+          : "自动翻译暂不可用：当前显示中文说明，可点击“显示原文”查看来源原文。"
+      );
     } finally {
       setLoading(false);
     }
@@ -140,6 +145,13 @@ export function NewsPanel({ articles, hasSelectedEvent = true, selectedArticleId
 
 function isChineseLanguage(language?: string | null): boolean {
   return Boolean(language?.toLowerCase().startsWith("zh"));
+}
+
+function fallbackChineseArticle(article: Article): { title: string; content: string } {
+  return {
+    title: article.title_translated?.trim() || "这篇报道暂时没有可用的中文标题",
+    content: article.content_translated?.trim() || "自动翻译服务暂不可用，系统没有拿到可用的中文正文。你可以点击“显示原文”查看来源原文，原文语言已在文章信息中标注。",
+  };
 }
 
 function sortReadableArticles(articles: Article[]): Article[] {
