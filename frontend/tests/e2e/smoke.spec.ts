@@ -41,8 +41,10 @@ test("renders TruthPuzzle dashboard", async ({ page }) => {
   await narrative.getByRole("button", { name: "显示原文" }).first().click();
   await expect(narrative.getByText("security")).toBeVisible();
   const sourceGraph = page.getByLabel("来源图谱");
-  await expect(sourceGraph.getByText("路透社 / Reuters")).toBeVisible();
-  await expect(sourceGraph.getByText("伊朗伊斯兰共和国通讯社 / IRNA")).toBeVisible();
+  await expect(sourceGraph.getByText("路透社")).toBeVisible();
+  await expect(sourceGraph.getByText("伊朗伊斯兰共和国通讯社")).toBeVisible();
+  await expect(sourceGraph.getByText("路透社 / Reuters")).toHaveCount(0);
+  await expect(sourceGraph.getByText("伊朗伊斯兰共和国通讯社 / IRNA")).toHaveCount(0);
   await expect(page.getByText("原文语言：英文").first()).toBeVisible();
   const sourceAgency = page.getByRole("article").getByLabel("新闻机构");
   await expect(sourceAgency.getByText("路透社")).toBeVisible();

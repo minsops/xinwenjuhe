@@ -1,5 +1,5 @@
 import { Tags } from "lucide-react";
-import { formatSourceName, getUiText } from "../../utils/i18n";
+import { formatSourceChineseName, getUiText } from "../../utils/i18n";
 import { Badge } from "../shared/Badge";
 import { OriginalText } from "./OriginalText";
 
@@ -136,8 +136,8 @@ function formatNarrativeSourceName(
   index: number,
 ): string {
   if (sourceId && sourceLabels[sourceId]) return sourceLabels[sourceId];
-  if (typeof sourceName === "string" && sourceName.trim() && !isUuidLike(sourceName)) return formatSourceName(sourceName);
-  if (sourceId && !isUuidLike(sourceId)) return formatSourceName(sourceId);
+  if (typeof sourceName === "string" && sourceName.trim() && !isUuidLike(sourceName)) return formatSourceChineseName(sourceName);
+  if (sourceId && !isUuidLike(sourceId)) return formatSourceChineseName(sourceId);
   return `来源 ${index + 1}`;
 }
 

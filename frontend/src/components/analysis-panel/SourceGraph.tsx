@@ -1,5 +1,5 @@
 import type { EventAnalysis } from "../../types/analysis";
-import { formatSourceName, getUiText } from "../../utils/i18n";
+import { formatSourceChineseName, getUiText } from "../../utils/i18n";
 
 type Props = {
   graph?: EventAnalysis["source_graph"];
@@ -53,9 +53,9 @@ function formatSourceNode(
   sourceLabels: Record<string, string>,
 ): string {
   if (sourceLabels[source.id]) return sourceLabels[source.id];
-  if (source.label && !isUuidLike(source.label)) return formatSourceName(source.label);
-  if (source.name && !isUuidLike(source.name)) return formatSourceName(source.name);
-  if (!isUuidLike(source.id)) return formatSourceName(source.id);
+  if (source.label && !isUuidLike(source.label)) return formatSourceChineseName(source.label);
+  if (source.name && !isUuidLike(source.name)) return formatSourceChineseName(source.name);
+  if (!isUuidLike(source.id)) return formatSourceChineseName(source.id);
   return "未知来源";
 }
 
