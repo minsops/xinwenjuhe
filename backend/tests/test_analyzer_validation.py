@@ -46,7 +46,7 @@ class AnalyzerValidationTest(unittest.TestCase):
 
         self.assertEqual(frame["article_id"], str(article.id))
         self.assertEqual(frame["source_id"], str(article.source_id))
-        self.assertEqual(frame["frames"], ["security"])
+        self.assertEqual(frame["frames"], ["安全事件"])
         self.assertEqual(frame["emphasis"], ["official claims"])
         self.assertEqual(frame["tone"], "中性")
 

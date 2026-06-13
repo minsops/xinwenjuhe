@@ -75,13 +75,36 @@ class NarrativeAnalyzer:
 
 
 def _zh_frame(value: str) -> str:
+    normalized = value.strip().lower().replace("-", "_")
     labels = {
         "news_report": "一般新闻报道",
         "factual report": "事实报道",
+        "factual_report": "事实报道",
         "neutral": "中性",
         "critical": "批评",
         "alleged": "指称",
         "conflict": "冲突",
         "official_statement": "官方表述",
+        "security": "安全事件",
+        "security_incident": "安全事件",
+        "attack": "袭击叙事",
+        "responsibility": "责任归属",
+        "external_responsibility": "外部责任",
+        "official_claims": "官方说法",
+        "official_uncertainty": "官方不确定性",
+        "strong attribution": "强烈归责",
+        "strong_attribution": "强烈归责",
+        "humanitarian": "人道影响",
+        "casualties": "伤亡规模",
+        "casualty_claim": "伤亡主张",
+        "verification_gap": "核验不足",
+        "regional_tension": "地区紧张",
+        "victim_frame": "受害者叙事",
+        "aggressor_frame": "加害者叙事",
+        "accountability": "追责叙事",
     }
-    return labels.get(value.strip().lower(), value)
+    if normalized in labels:
+        return labels[normalized]
+    if "_" in normalized:
+        return normalized.replace("_", " ")
+    return value

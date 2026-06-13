@@ -27,6 +27,9 @@ test("renders TruthPuzzle dashboard", async ({ page }) => {
   await expect(page.getByText(/v1 ·/)).toBeVisible();
   await expect(page.getByText(/共识区/)).toBeVisible();
   await expect(page.getByText("含 1 篇通讯社转载")).toBeVisible();
+  await expect(page.getByText("安全事件").first()).toBeVisible();
+  await expect(page.getByText("官方不确定性").first()).toBeVisible();
+  await expect(page.getByText("强烈归责").first()).toBeVisible();
   await expect(page.getByText("原文语言：英文").first()).toBeVisible();
   await expect(page.getByText("路透社 / Reuters").first()).toBeVisible();
   await expect(page.getByText(/英国 \/ 欧洲 \/ 原文语言：英文/)).toBeVisible();

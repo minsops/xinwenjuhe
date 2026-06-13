@@ -47,8 +47,8 @@ function demoAnalysis(): EventAnalysis {
       total: 2
     }],
     narrative_frames: [
-      { source_id: "Reuters", frames: ["安全事件", "官方不确定性"], tone: "中性" },
-      { source_id: "IRNA", frames: ["袭击叙事", "外部责任"], tone: "强烈归责" }
+      { source_id: "Reuters", frames: ["security", "official_uncertainty"], angle: "factual_report", tone: "neutral" },
+      { source_id: "IRNA", frames: ["attack", "external_responsibility"], angle: "responsibility", tone: "strong attribution" }
     ],
     timeline: [
       {
