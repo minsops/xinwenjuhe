@@ -65,6 +65,21 @@ test("links a consensus fact to the source article", async ({ page }) => {
   }
 });
 
+test("queues the event pipeline from the reanalyze button", async ({ page }) => {
+  await useDemoData(page);
+  let queued = false;
+  await page.route("**/api/v1/events/demo/pipeline", (route) => {
+    queued = true;
+    return route.fulfill({ json: { data: { task_id: "task-1", event_id: "demo", status: "queued" } } });
+  });
+
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "重新分析" }).click();
+  await expect(page.getByText("已加入后台分析队列，完成后页面会自动更新。")).toBeVisible();
+  expect(queued).toBeTruthy();
+});
+
 test("exposes event selection and filters on mobile", async ({ page }) => {
   await useDemoData(page);
   await page.setViewportSize({ width: 390, height: 844 });

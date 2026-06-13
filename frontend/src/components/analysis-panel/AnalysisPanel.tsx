@@ -1,7 +1,7 @@
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import type { EventAnalysis } from "../../types/analysis";
-import { runEventAnalysis } from "../../services/api";
+import { startEventPipeline } from "../../services/api";
 import { BlindSpotZone } from "./BlindSpotZone";
 import { ConsensusZone } from "./ConsensusZone";
 import { DisputeZone } from "./DisputeZone";
@@ -20,15 +20,18 @@ type Props = {
 
 export function AnalysisPanel({ analysis, eventId, sourceLabels = {}, onFactSelect, onReanalyze }: Props) {
   const [running, setRunning] = useState(false);
+  const [reanalyzeNotice, setReanalyzeNotice] = useState<string | undefined>();
 
   async function handleReanalyze() {
     if (!eventId || running) return;
     setRunning(true);
+    setReanalyzeNotice(undefined);
     try {
-      await runEventAnalysis(eventId);
+      await startEventPipeline(eventId);
+      setReanalyzeNotice("已加入后台分析队列，完成后页面会自动更新。");
       onReanalyze?.();
     } catch {
-      return;
+      setReanalyzeNotice("重新分析提交失败，请检查后端任务服务。");
     } finally {
       setRunning(false);
     }
@@ -48,9 +51,10 @@ export function AnalysisPanel({ analysis, eventId, sourceLabels = {}, onFactSele
             disabled={running || !eventId}
           >
             <RefreshCw className={`h-4 w-4 ${running ? "animate-spin" : ""}`} />
-            {running ? "分析中..." : "重新分析"}
+            {running ? "提交中..." : "重新分析"}
           </button>
         </div>
+        {reanalyzeNotice ? <div className="mt-3 text-xs text-stone-500 dark:text-stone-400">{reanalyzeNotice}</div> : null}
       </div>
       <div className="m-4 rounded-2xl border border-cyan-100 bg-cyan-50/90 px-4 py-3 text-sm leading-6 text-cyan-950 dark:border-cyan-900 dark:bg-cyan-950/50 dark:text-cyan-100">
         本站把多家媒体报道拆成事实、争议和盲区。下面不是外站搬运，而是本站对同一事件的结构化分析。

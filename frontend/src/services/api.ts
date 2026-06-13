@@ -33,8 +33,8 @@ export async function fetchAnalysis(eventId: string): Promise<EventAnalysis> {
   return data.data;
 }
 
-export async function runEventAnalysis(eventId: string): Promise<EventAnalysis> {
-  const { data } = await client.post<Envelope<EventAnalysis>>(`/api/v1/analysis/events/${eventId}/run`);
+export async function startEventPipeline(eventId: string): Promise<{ task_id: string; event_id: string; status: string }> {
+  const { data } = await client.post<Envelope<{ task_id: string; event_id: string; status: string }>>(`/api/v1/events/${eventId}/pipeline`);
   return data.data;
 }
 
