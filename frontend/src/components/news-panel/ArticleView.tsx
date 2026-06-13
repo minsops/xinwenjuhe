@@ -72,7 +72,7 @@ export function ArticleView({ article, showingChinese, loadingTranslation, trans
               className="font-semibold text-stone-800 dark:text-stone-100"
               text={sourceChineseName}
               original={sourceOriginalName}
-              originalLanguage="en"
+              originalLanguage={source?.language || article.language}
             />
           </MetaItem>
           <MetaItem label={text.sourceCountry} value={formatCountry(source?.country)} />

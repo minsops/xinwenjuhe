@@ -158,6 +158,79 @@ test("does not show stale english translation cache as Chinese", async ({ page }
   await expect(page.getByText("Old cached English body that must not appear inside the Chinese translation view.")).toHaveCount(0);
 });
 
+test("labels source original name with the source language", async ({ page }) => {
+  await page.route("**/api/v1/**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === "/api/v1/events") {
+      return route.fulfill({
+        json: {
+          data: [{
+            id: "evt-source-language",
+            title: "来源语言测试事件",
+            summary: "用于确认来源原名语言标注。",
+            category: "politics",
+            region_primary: "middle_east",
+            status: "active",
+            article_count: 1,
+            source_count: 1,
+            language_count: 1,
+            region_count: 1,
+            heat_score: 35,
+            last_updated_at: new Date().toISOString(),
+          }],
+        },
+      });
+    }
+    if (url.pathname === "/api/v1/events/evt-source-language/articles") {
+      return route.fulfill({
+        json: {
+          data: [{
+            id: "article-source-language",
+            source_id: "irna",
+            external_url: "https://example.test/irna",
+            title_original: "Local agency report",
+            title_translated: "当地通讯社报道",
+            content_original: "Original report body with enough text to render a normal article panel.",
+            content_translated: "这是一篇用于测试来源语言标注的中文正文。",
+            language: "fa",
+            published_at: new Date().toISOString(),
+            source: { id: "irna", name: "IRNA", country: "Iran", region: "middle_east", language: "fa", composite_credibility: 48 },
+          }],
+        },
+      });
+    }
+    if (url.pathname === "/api/v1/events/evt-source-language/analysis") {
+      return route.fulfill({
+        json: {
+          data: {
+            event_id: "evt-source-language",
+            summary: "中文分析摘要",
+            analysis_version: 1,
+            article_count_at_analysis: 1,
+            consensus_facts: [],
+            disputed_facts: [],
+            blind_spots: [],
+            narrative_frames: [],
+            source_graph: { nodes: [], edges: [] },
+            timeline: [],
+          },
+        },
+      });
+    }
+    if (url.pathname === "/api/v1/tasks") {
+      return route.fulfill({ json: { data: { history: [], queue_depth: null } } });
+    }
+    return route.abort();
+  });
+
+  await page.goto("/");
+
+  const sourceAgency = page.getByRole("article").getByLabel("新闻机构");
+  await sourceAgency.getByRole("button", { name: "显示原文" }).click();
+  await expect(sourceAgency.getByText("IRNA")).toBeVisible();
+  await expect(sourceAgency.getByText("原文语言：波斯文")).toBeVisible();
+});
+
 test("queues the event pipeline from the reanalyze button", async ({ page }) => {
   await useDemoData(page);
   let queued = false;
