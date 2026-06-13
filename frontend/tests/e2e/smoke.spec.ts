@@ -33,6 +33,12 @@ test("renders TruthPuzzle dashboard", async ({ page }) => {
   await expect(page.getByText("原文报道")).toBeVisible();
   await expect(page.getByText("翻译失败：翻译服务没有返回可用的中文。")).toBeVisible();
   await expect(page.getByRole("button", { name: "查看对应报道：夜间发生事件，当地应急力量随后介入。" })).toBeVisible();
+  await page.getByRole("banner").getByRole("textbox", { name: "搜索事件" }).fill("Cross-border");
+  if ((page.viewportSize()?.width ?? 0) >= 1280) {
+    await expect(page.getByLabel("事件列表").getByText(/1 条事件/)).toBeVisible();
+  } else {
+    await expect(page.getByText("1 条匹配结果")).toBeVisible();
+  }
 });
 
 test("links a consensus fact to the source article", async ({ page }) => {

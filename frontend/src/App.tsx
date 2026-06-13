@@ -37,7 +37,11 @@ export default function App() {
   const taskOverview = useTaskProgress();
   const live = useEventSocket(selected?.id);
   const filteredEvents = useMemo(
-    () => events.filter((event) => event.title.toLowerCase().includes(search.toLowerCase())),
+    () => {
+      const query = search.trim().toLowerCase();
+      if (!query) return events;
+      return events.filter((event) => searchableEventText(event).includes(query));
+    },
     [events, search]
   );
   const sourceLabels = useMemo(
@@ -93,7 +97,7 @@ export default function App() {
                   }}
                 >
                   {filteredEvents.map((event) => (
-                    <option key={event.id} value={event.id}>{event.title}</option>
+                    <option key={event.id} value={event.id}>{eventDisplayTitle(event)}</option>
                   ))}
                 </select>
                 <select
@@ -175,4 +179,29 @@ export default function App() {
       </div>
     </div>
   );
+}
+
+function eventDisplayTitle(event: { title: string; title_zh?: string | null }): string {
+  return event.title_zh || event.title;
+}
+
+function searchableEventText(event: {
+  title: string;
+  title_en?: string | null;
+  title_zh?: string | null;
+  summary?: string | null;
+  summary_zh?: string | null;
+  category?: string | null;
+}): string {
+  return [
+    event.title,
+    event.title_en,
+    event.title_zh,
+    event.summary,
+    event.summary_zh,
+    event.category,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 }
