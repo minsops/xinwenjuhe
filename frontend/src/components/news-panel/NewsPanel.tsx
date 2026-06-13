@@ -23,7 +23,11 @@ export function NewsPanel({ articles, hasSelectedEvent = true, selectedArticleId
   const [backfillNotice, setBackfillNotice] = useState<string | undefined>();
   const [translatedByArticle, setTranslatedByArticle] = useState<Record<string, { title: string; content: string }>>({});
 
-  const selected = useMemo(() => articles.find((article) => article.id === selectedId) ?? articles[0], [articles, selectedId]);
+  const readableArticles = useMemo(() => sortReadableArticles(articles), [articles]);
+  const selected = useMemo(
+    () => readableArticles.find((article) => article.id === selectedId) ?? readableArticles[0],
+    [readableArticles, selectedId]
+  );
   const translatedText = selected ? translatedByArticle[selected.id] : undefined;
 
   useEffect(() => {
@@ -32,10 +36,10 @@ export function NewsPanel({ articles, hasSelectedEvent = true, selectedArticleId
       setShowingChinese(true);
       setTranslationError(undefined);
       setBackfillNotice(undefined);
-    } else if (!selectedId && articles[0]) {
-      setSelectedId(articles[0].id);
+    } else if (!selectedId && readableArticles[0]) {
+      setSelectedId(readableArticles[0].id);
     }
-  }, [articles, selectedArticleId, selectedId]);
+  }, [readableArticles, selectedArticleId, selectedId]);
 
   useEffect(() => {
     if (!selected || !showingChinese) return;
@@ -90,7 +94,7 @@ export function NewsPanel({ articles, hasSelectedEvent = true, selectedArticleId
   return (
     <div className="soft-scrollbar h-full overflow-y-auto bg-white dark:bg-stone-950">
       {articles.length ? (
-        <SourceTabs articles={articles} selectedId={selected?.id} onSelect={(id) => { setSelectedId(id); setShowingChinese(true); setTranslationError(undefined); setBackfillNotice(undefined); onArticleSelect?.(id); }} />
+        <SourceTabs articles={readableArticles} selectedId={selected?.id} onSelect={(id) => { setSelectedId(id); setShowingChinese(true); setTranslationError(undefined); setBackfillNotice(undefined); onArticleSelect?.(id); }} />
       ) : null}
       {!articles.length ? (
         <div className="flex min-h-[420px] items-center justify-center p-6 text-center">
@@ -126,4 +130,27 @@ export function NewsPanel({ articles, hasSelectedEvent = true, selectedArticleId
 
 function isChineseLanguage(language?: string | null): boolean {
   return Boolean(language?.toLowerCase().startsWith("zh"));
+}
+
+function sortReadableArticles(articles: Article[]): Article[] {
+  return [...articles].sort((left, right) => {
+    const score = articleReadabilityScore(right) - articleReadabilityScore(left);
+    if (score !== 0) return score;
+    return publishedMs(right) - publishedMs(left);
+  });
+}
+
+function articleReadabilityScore(article: Article): number {
+  const contentLength = article.content_original.trim().length;
+  let score = Math.min(contentLength, 1200);
+  if (contentLength >= 220) score += 500;
+  if (article.source?.name && article.source.name !== "news.google.com") score += 350;
+  if (article.source?.country && article.source.country !== "Unknown") score += 180;
+  if (article.source?.region && article.source.region !== "unknown") score += 120;
+  if (article.author) score += 40;
+  return score;
+}
+
+function publishedMs(article: Article): number {
+  return article.published_at ? new Date(article.published_at).getTime() : 0;
 }
