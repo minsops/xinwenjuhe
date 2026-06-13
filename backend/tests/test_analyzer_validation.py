@@ -60,6 +60,16 @@ class AnalyzerValidationTest(unittest.TestCase):
 
         self.assertEqual(rows, [])
 
+    def test_content_en_is_required_even_when_display_content_is_chinese(self) -> None:
+        extractor = FactExtractor()
+
+        rows = extractor._validate_fragments(
+            [{"type": "what", "content": "官方确认事件已经发生。"}],
+            language="en",
+        )
+
+        self.assertEqual(rows, [])
+
     def test_consensus_payload_records_article_count_not_source_count(self) -> None:
         event_id = uuid.uuid4()
         source_id = uuid.uuid4()

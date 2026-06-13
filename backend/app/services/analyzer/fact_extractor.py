@@ -105,7 +105,6 @@ class FactExtractor:
     def _validate_fragments(self, rows: list[dict], language: str = "en") -> list[dict]:
         """Keep only schema-compatible fact fragments and fill safe defaults."""
         fragments: list[dict] = []
-        is_english = language.lower().startswith("en")
         for row in rows:
             if not isinstance(row, dict):
                 continue
@@ -113,8 +112,6 @@ class FactExtractor:
             content_en = str(row.get("content_en") or "").strip()
             if not content:
                 continue
-            if not content_en and is_english:
-                content_en = content
             if not content_en:
                 continue
             if not _contains_cjk(content) and not language.lower().startswith("zh"):
