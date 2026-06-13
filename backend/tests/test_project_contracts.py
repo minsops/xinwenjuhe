@@ -330,6 +330,10 @@ class ProjectContractsTest(unittest.TestCase):
         self.assertIn("_stores_article_translation(payload.target_lang)", articles_api)
         self.assertIn('translate_article(article.title_original, article.language, "zh")', analyze_task)
         self.assertIn('translate_article(article.content_original, article.language, "zh")', analyze_task)
+        analysis_service = (BACKEND_ROOT / "app/services/analyzer/event_analysis_service.py").read_text(encoding="utf-8")
+        run_body = analysis_service.split("async def run", 1)[1].split("async def should_reanalyze", 1)[0]
+        self.assertIn("existing_article_ids", run_body)
+        self.assertNotIn("delete(FactFragment).where(FactFragment.event_id", run_body)
         if readme_path.exists():
             readme = readme_path.read_text(encoding="utf-8")
             self.assertIn("LLM Configuration", readme)

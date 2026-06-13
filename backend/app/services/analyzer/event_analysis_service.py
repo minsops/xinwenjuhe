@@ -37,10 +37,17 @@ class EventAnalysisService:
         if not articles:
             raise ApiError("no_articles", "Event has no articles to analyze", 400)
 
-        fragments = await self._extract_fragments(event_id, articles)
-        await self.db.execute(delete(FactFragment).where(FactFragment.event_id == event_id))
-        self.db.add_all(fragments)
+        existing_rows = await self.db.execute(
+            select(FactFragment.article_id).where(FactFragment.event_id == event_id)
+        )
+        existing_article_ids = set(existing_rows.scalars().all())
+        new_articles = [article for article in articles if article.id not in existing_article_ids]
+        new_fragments = await self._extract_fragments(event_id, new_articles)
+        self.db.add_all(new_fragments)
         await self.db.flush()
+        fragments = (
+            await self.db.execute(select(FactFragment).where(FactFragment.event_id == event_id))
+        ).scalars().all()
 
         detector = ContradictionDetector()
         contradictions = await detector.detect_all_from_fragments(event_id, fragments)
