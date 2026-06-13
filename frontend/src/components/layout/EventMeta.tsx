@@ -1,6 +1,6 @@
 import type { Event } from "../../types/event";
 import { formatDate } from "../../utils/formatDate";
-import { formatRegion, getUiText } from "../../utils/i18n";
+import { formatCategory, formatRegion, formatStatus, getUiText } from "../../utils/i18n";
 import { Badge } from "../shared/Badge";
 
 type Props = {
@@ -18,11 +18,11 @@ export function EventMeta({ event }: Props) {
           <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-civic dark:text-cyan-200">
             <span>{formatRegion(event.region_primary)}</span>
             <span className="h-1 w-1 rounded-full bg-stone-300 dark:bg-stone-700" />
-            <span>{event.category ?? text.analysis}</span>
+            <span>{formatCategory(event.category)}</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-black leading-tight tracking-tight text-stone-950 dark:text-white lg:text-3xl">{event.title_zh ?? event.title}</h1>
-            <Badge tone={hot ? "red" : "blue"}>{hot ? text.hotStatus : statusLabel(event.status, text.activeStatus)}</Badge>
+            <Badge tone={hot ? "red" : "blue"}>{hot ? text.hotStatus : formatStatus(event.status)}</Badge>
           </div>
           {summary ? <p className="mt-3 max-w-4xl text-sm leading-6 text-stone-600 dark:text-stone-300">{summary}</p> : null}
         </div>
@@ -48,8 +48,4 @@ function MetricPill({ label, value }: { label: string; value: string | number })
       <div className="text-xs text-stone-500 dark:text-stone-400">{label}</div>
     </div>
   );
-}
-
-function statusLabel(status: string, activeLabel: string): string {
-  return status === "active" ? activeLabel : status;
 }

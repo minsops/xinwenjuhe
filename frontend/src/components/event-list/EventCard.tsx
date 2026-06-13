@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Event } from "../../types/event";
 import { formatDate } from "../../utils/formatDate";
-import { formatLanguage, formatRegion, getUiText } from "../../utils/i18n";
+import { formatCategory, formatLanguage, formatRegion, getUiText } from "../../utils/i18n";
 import { Badge } from "../shared/Badge";
 
 type Props = {
@@ -32,7 +32,7 @@ export function EventCard({ event, selected, onSelect }: Props) {
         <div className="min-w-0">
           <div className="mb-1 flex flex-wrap items-center gap-1.5 text-xs text-stone-500 dark:text-stone-400">
             <span className="rounded-full bg-stone-100 px-2 py-0.5 dark:bg-stone-800">{formatRegion(event.region_primary)}</span>
-            <span className="rounded-full bg-stone-100 px-2 py-0.5 dark:bg-stone-800">{event.category ?? text.analysis}</span>
+            <span className="rounded-full bg-stone-100 px-2 py-0.5 dark:bg-stone-800">{formatCategory(event.category)}</span>
           </div>
           <h3 className="text-[15px] font-bold leading-snug text-stone-950 dark:text-stone-50">{title}</h3>
         </div>

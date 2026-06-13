@@ -185,19 +185,60 @@ const enRegions: Record<string, string> = {
 };
 
 const zhCountries: Record<string, string> = {
-  "United Kingdom": "英国",
-  Qatar: "卡塔尔",
-  Iran: "伊朗",
-  "United States": "美国",
+  Argentina: "阿根廷",
+  Bangladesh: "孟加拉国",
+  Belarus: "白俄罗斯",
+  Brazil: "巴西",
+  Canada: "加拿大",
   China: "中国",
-  Russia: "俄罗斯",
-  Turkey: "土耳其",
-  Germany: "德国",
   France: "法国",
-  Japan: "日本",
-  "South Korea": "韩国",
+  Germany: "德国",
   India: "印度",
+  Iran: "伊朗",
+  Israel: "以色列",
+  Italy: "意大利",
+  Japan: "日本",
+  Kazakhstan: "哈萨克斯坦",
+  Kenya: "肯尼亚",
+  Mexico: "墨西哥",
+  Nepal: "尼泊尔",
+  Nigeria: "尼日利亚",
+  Pakistan: "巴基斯坦",
+  Qatar: "卡塔尔",
+  Russia: "俄罗斯",
+  "Saudi Arabia": "沙特阿拉伯",
+  "South Africa": "南非",
+  "South Korea": "韩国",
+  Spain: "西班牙",
+  "Sri Lanka": "斯里兰卡",
+  Taiwan: "中国台湾",
+  Turkey: "土耳其",
+  Ukraine: "乌克兰",
+  "United Arab Emirates": "阿联酋",
+  "United Kingdom": "英国",
+  "United States": "美国",
+  Venezuela: "委内瑞拉",
   Unknown: "未知国家"
+};
+
+const zhCategories: Record<string, string> = {
+  conflict: "冲突",
+  politics: "政治",
+  economy: "经济",
+  disaster: "灾害",
+  technology: "科技",
+  general: "综合",
+  analysis: "分析"
+};
+
+const zhStatuses: Record<string, string> = {
+  active: "进行中",
+  archived: "已归档",
+  merged: "已合并",
+  split: "已拆分",
+  pending_review: "待审核",
+  approved: "已通过",
+  rejected: "已拒绝"
 };
 
 function useChineseUi(): boolean {
@@ -213,6 +254,18 @@ export function formatRegion(region?: string | null): string {
 export function formatCountry(country?: string | null): string {
   if (!country) return getUiText().unknown;
   return useChineseUi() ? zhCountries[country] ?? country : country;
+}
+
+export function formatCategory(category?: string | null): string {
+  if (!category) return getUiText().analysis;
+  const normalized = category.trim().toLowerCase().replace(/\s+/g, "_");
+  return useChineseUi() ? zhCategories[normalized] ?? category : category;
+}
+
+export function formatStatus(status?: string | null): string {
+  if (!status) return getUiText().unknown;
+  const normalized = status.trim().toLowerCase().replace(/\s+/g, "_");
+  return useChineseUi() ? zhStatuses[normalized] ?? status : status;
 }
 
 const zhLanguages: Record<string, string> = {

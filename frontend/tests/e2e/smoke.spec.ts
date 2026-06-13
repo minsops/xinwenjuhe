@@ -26,6 +26,7 @@ test("renders TruthPuzzle dashboard", async ({ page }) => {
   await expect(page.getByText(/共识区/)).toBeVisible();
   await expect(page.getByText("含 1 篇通讯社转载")).toBeVisible();
   await expect(page.getByText("原文语言：英文").first()).toBeVisible();
+  await expect(page.getByText(/英国 \/ 欧洲 \/ 原文语言：英文/)).toBeVisible();
   await expect(page.getByRole("button", { name: "查看对应报道：夜间发生事件，当地应急力量随后介入。" })).toBeVisible();
 });
 
