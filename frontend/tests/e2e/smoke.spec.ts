@@ -48,6 +48,8 @@ test("renders TruthPuzzle dashboard", async ({ page }) => {
   const sourceGraph = page.getByLabel("来源图谱");
   await expect(sourceGraph.getByText("路透社")).toBeVisible();
   await expect(sourceGraph.getByText("伊朗伊斯兰共和国通讯社")).toBeVisible();
+  await expect(sourceGraph.getByText(/路透社 · 英国 · 原文语言：英文/)).toBeVisible();
+  await expect(sourceGraph.getByText(/伊朗伊斯兰共和国通讯社 · 伊朗 · 原文语言：英文/)).toBeVisible();
   await expect(sourceGraph.getByText("路透社 / Reuters")).toHaveCount(0);
   await expect(sourceGraph.getByText("伊朗伊斯兰共和国通讯社 / IRNA")).toHaveCount(0);
   await expect(page.getByText("原文语言：英文").first()).toBeVisible();

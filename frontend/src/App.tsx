@@ -12,7 +12,8 @@ import { useArticles } from "./hooks/useArticles";
 import { useEventSocket } from "./hooks/useEventSocket";
 import { useEvent } from "./hooks/useEvent";
 import { useTaskProgress } from "./hooks/useTaskProgress";
-import { formatRegion, formatSourceChineseName, getUiText } from "./utils/i18n";
+import { formatCountry, formatLanguage, formatRegion, formatSourceChineseName, getUiText } from "./utils/i18n";
+import type { Article } from "./types/article";
 
 const mobileSelectClass =
   "focus-ring h-11 min-w-0 rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-800 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-100";
@@ -65,10 +66,16 @@ export default function App() {
       Object.fromEntries(
         articles
           .filter((article) => article.source)
-          .map((article) => [
-            article.source_id,
-            formatSourceChineseName(article.source?.name, article.source?.name_en),
-          ])
+          .flatMap((article) => {
+            const label = formatArticleSourceLabel(article);
+            const source = article.source;
+            return [
+              [article.source_id, label],
+              [source?.id, label],
+              [source?.name, label],
+              [source?.name_en, label],
+            ].filter(([key]) => Boolean(key));
+          })
       ),
     [articles]
   );
@@ -229,6 +236,14 @@ function formatLiveEventType(type?: string): string {
 
 function eventDisplayTitle(event: { title: string; title_zh?: string | null }): string {
   return event.title_zh || event.title;
+}
+
+function formatArticleSourceLabel(article: Article): string {
+  const source = article.source;
+  const name = formatSourceChineseName(source?.name, source?.name_en);
+  const country = formatCountry(source?.country);
+  const language = formatLanguage(article.language || source?.language);
+  return `${name} · ${country} · 原文语言：${language}`;
 }
 
 function searchableEventText(event: {
