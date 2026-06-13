@@ -1,7 +1,8 @@
 import type { Event } from "../../types/event";
 import { formatDate } from "../../utils/formatDate";
-import { getUiText } from "../../utils/i18n";
+import { formatLanguage, getUiText } from "../../utils/i18n";
 import { Badge } from "../shared/Badge";
+import { useState } from "react";
 
 type Props = {
   event: Event;
@@ -11,7 +12,12 @@ type Props = {
 
 export function EventCard({ event, selected, onSelect }: Props) {
   const text = getUiText();
+  const [showOriginal, setShowOriginal] = useState(false);
   const hot = event.heat_score >= 70;
+  const hasOriginalEvent = Boolean(event.title_en || event.summary);
+  const title = showOriginal ? event.title_en ?? event.title : event.title_zh ?? event.title;
+  const summary = showOriginal ? event.summary : event.summary_zh ?? event.summary;
+  const originalLanguage = event.language_count > 1 ? "multi" : "auto";
   return (
     <button
       className={`focus-ring w-full rounded border p-3 text-left ${
@@ -20,13 +26,36 @@ export function EventCard({ event, selected, onSelect }: Props) {
       onClick={onSelect}
     >
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">{event.title}</h3>
+        <h3 className="text-sm font-semibold">{title}</h3>
         <div className="flex shrink-0 items-center gap-2">
           {hot ? <span className="h-2 w-2 animate-pulse rounded-full bg-red-600" title={text.hotStatus} /> : null}
           <Badge tone={hot ? "red" : "blue"}>{Math.round(event.heat_score)}</Badge>
         </div>
       </div>
-      <p className="mt-2 line-clamp-2 text-sm text-stone-600 dark:text-stone-300">{event.summary ?? "No summary yet."}</p>
+      <p className="mt-2 line-clamp-2 text-sm text-stone-600 dark:text-stone-300">{summary ?? "暂无概要。"}</p>
+      <div className="mt-2 flex items-center justify-between gap-2 text-xs text-stone-500">
+        <span>{text.originalLanguage}：{formatLanguage(originalLanguage)}</span>
+        {hasOriginalEvent ? (
+          <span
+            role="button"
+            tabIndex={0}
+            className="rounded border border-stone-300 px-2 py-1 text-stone-700 dark:border-stone-700 dark:text-stone-200"
+            onClick={(eventClick) => {
+              eventClick.stopPropagation();
+              setShowOriginal((value) => !value);
+            }}
+            onKeyDown={(eventKey) => {
+              if (eventKey.key === "Enter" || eventKey.key === " ") {
+                eventKey.preventDefault();
+                eventKey.stopPropagation();
+                setShowOriginal((value) => !value);
+              }
+            }}
+          >
+            {showOriginal ? text.showChinese : text.original}
+          </span>
+        ) : null}
+      </div>
       <div className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-xs text-stone-500">
         <span>{event.article_count} {text.reports}</span>
         <span>{event.source_count} {text.sources}</span>

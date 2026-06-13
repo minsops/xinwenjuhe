@@ -21,11 +21,13 @@ const en = {
   credibility: "Credibility",
   originalArticle: "Original article",
   translatedVersion: "Chinese translation",
+  originalLanguage: "Original language",
   shortContentNotice: "This item only contains a short feed summary.",
   readFullOriginal: "Open original page",
   translate: "Translate to Chinese",
   translating: "Translating",
-  original: "Original",
+  original: "Show original",
+  showChinese: "Show Chinese",
   summary: "Summary",
   basedOnReports: "Based on {count} reports",
   consensus: "Consensus",
@@ -90,11 +92,13 @@ const zh: UiText = {
   credibility: "可信度",
   originalArticle: "原文报道",
   translatedVersion: "中文翻译",
+  originalLanguage: "原文语言",
   shortContentNotice: "这条只包含来源摘要，正文较短。",
   readFullOriginal: "打开原始网页",
   translate: "翻译成中文",
   translating: "翻译中",
-  original: "切回原文",
+  original: "显示原文",
+  showChinese: "显示中文",
   summary: "事件概要",
   basedOnReports: "基于 {count} 篇报道",
   consensus: "共识区",
@@ -195,4 +199,36 @@ export function formatRegion(region?: string | null): string {
 export function formatCountry(country?: string | null): string {
   if (!country) return getUiText().unknown;
   return useChineseUi() ? zhCountries[country] ?? country : country;
+}
+
+const zhLanguages: Record<string, string> = {
+  auto: "自动识别",
+  ar: "阿拉伯文",
+  "ar-sa": "阿拉伯文",
+  de: "德文",
+  en: "英文",
+  "en-us": "英文",
+  "en-gb": "英文",
+  es: "西班牙文",
+  fa: "波斯文",
+  fr: "法文",
+  hi: "印地文",
+  it: "意大利文",
+  ja: "日文",
+  ko: "韩文",
+  multi: "多语种",
+  pt: "葡萄牙文",
+  ru: "俄文",
+  tr: "土耳其文",
+  uk: "乌克兰文",
+  zh: "中文",
+  "zh-cn": "中文",
+  "zh-tw": "中文",
+  "zh-hk": "中文"
+};
+
+export function formatLanguage(language?: string | null): string {
+  if (!language) return getUiText().unknown;
+  const normalized = language.toLowerCase();
+  return zhLanguages[normalized] ?? zhLanguages[normalized.split("-")[0]] ?? language;
 }

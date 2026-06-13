@@ -1,29 +1,33 @@
 import { ExternalLink } from "lucide-react";
 import type { Article } from "../../types/article";
 import { formatDate } from "../../utils/formatDate";
-import { formatCountry, formatRegion, getUiText } from "../../utils/i18n";
+import { formatCountry, formatLanguage, formatRegion, getUiText } from "../../utils/i18n";
 import { CredibilityBadge } from "./CredibilityBadge";
 import { TranslateButton } from "./TranslateButton";
 
 type Props = {
   article?: Article;
-  translated: boolean;
-  loading: boolean;
+  showingChinese: boolean;
+  loadingTranslation: boolean;
   translatedTitle?: string;
   translatedContent?: string;
   translationError?: string;
   highlightedFact?: string;
-  onTranslate: () => void;
-  onReset: () => void;
+  onShowChinese: () => void;
+  onShowOriginal: () => void;
 };
 
-export function ArticleView({ article, translated, loading, translatedTitle, translatedContent, translationError, highlightedFact, onTranslate, onReset }: Props) {
+export function ArticleView({ article, showingChinese, loadingTranslation, translatedTitle, translatedContent, translationError, highlightedFact, onShowChinese, onShowOriginal }: Props) {
   const text = getUiText();
   if (!article) {
     return <div className="p-6 text-sm text-stone-500">{text.noArticle}</div>;
   }
-  const title = translated ? translatedTitle ?? article.title_original : article.title_original;
-  const content = translated ? translatedContent ?? article.content_original : article.content_original;
+  const title = showingChinese
+    ? translatedTitle ?? article.title_translated ?? (loadingTranslation ? "正在翻译标题..." : article.title_original)
+    : article.title_original;
+  const content = showingChinese
+    ? translatedContent ?? article.content_translated ?? (loadingTranslation ? "正在翻译正文..." : article.content_original)
+    : article.content_original;
   const source = article.source;
   const isShortContent = article.content_original.trim().length < 180;
   const normalizedFact = highlightedFact?.trim().toLowerCase();
@@ -44,17 +48,18 @@ export function ArticleView({ article, translated, loading, translatedTitle, tra
           <span>{formatDate(article.published_at)}</span>
           {article.author ? <span> · {article.author}</span> : null}
         </div>
-        <TranslateButton translated={translated} loading={loading} onTranslate={onTranslate} onReset={onReset} />
+        <TranslateButton showingChinese={showingChinese} loading={loadingTranslation} onShowChinese={onShowChinese} onShowOriginal={onShowOriginal} />
       </div>
       <div className="mb-3 inline-flex rounded bg-stone-100 px-2 py-1 text-xs font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
-        {translated ? text.translatedVersion : text.originalArticle}
+        {showingChinese ? text.translatedVersion : text.originalArticle}
       </div>
+      <div className="mb-3 text-xs text-stone-500">{text.originalLanguage}：{formatLanguage(article.language || source?.language)}</div>
       <h2 className="text-2xl font-semibold leading-tight">{title}</h2>
       <div className="mt-4 grid gap-3 rounded border border-stone-200 bg-stone-50 p-3 text-sm dark:border-stone-700 dark:bg-stone-900 sm:grid-cols-2">
         <MetaItem label={text.sourceAgency} value={source?.name_en && source.name_en !== source.name ? `${source.name} / ${source.name_en}` : source?.name ?? text.unknown} />
         <MetaItem label={text.sourceCountry} value={formatCountry(source?.country)} />
         <MetaItem label={text.sourceRegion} value={formatRegion(source?.region)} />
-        <MetaItem label={text.sourceLanguage} value={article.language || source?.language || text.unknown} />
+        <MetaItem label={text.sourceLanguage} value={formatLanguage(article.language || source?.language)} />
         <div>
           <div className="text-xs text-stone-500">{text.credibility}</div>
           <CredibilityBadge score={source?.composite_credibility} />

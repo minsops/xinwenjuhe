@@ -15,17 +15,18 @@ TRANSLATION_PROMPT = """将以下{source_lang}新闻报道翻译为{target_lang_
 
 翻译要求：
 1. 保留原文的语气和措辞倾向（不要将带有立场的表述翻译成中性表述）
-2. 专有名词保留原文，括号内标注翻译
-3. 保留原文中的直接引述，不做改写
-4. 保留原文的段落结构
-5. 对于难以精确翻译的文化特定表述，保留原文并在括号内解释
-6. 只输出译文，不要输出说明、前缀、Markdown 或“以下是翻译”
+2. 如果目标语言是简体中文，所有新闻信息都必须用中文表达，不要保留整句英文或其他外文
+3. 专有名词优先使用通行中文译名；没有通行译名时，才保留原文并在括号内给出中文解释
+4. 保留原文中的直接引述，不做改写
+5. 保留原文的段落结构
+6. 对于难以精确翻译的文化特定表述，保留原文并在括号内解释
+7. 只输出译文，不要输出说明、前缀、Markdown 或“以下是翻译”
 
 原文：
 {original_text}
 """
 
-TRANSLATION_CACHE_VERSION = "v2"
+TRANSLATION_CACHE_VERSION = "v3"
 
 
 class TranslationError(RuntimeError):
@@ -128,3 +129,17 @@ class TranslationService:
             cjk_chars = sum(1 for char in translated if "\u4e00" <= char <= "\u9fff")
             if cjk_chars < max(6, min(30, len(translated) // 20)):
                 raise TranslationError("翻译结果不像中文")
+            if TranslationService._has_long_latin_sentence(translated):
+                raise TranslationError("翻译结果仍包含大段外文")
+
+    @staticmethod
+    def _has_long_latin_sentence(value: str) -> bool:
+        run = 0
+        for char in value:
+            if char.isascii() and (char.isalpha() or char in " ,;:'\"()/-"):
+                run += 1
+                if run >= 48:
+                    return True
+            else:
+                run = 0
+        return False

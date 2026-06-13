@@ -26,6 +26,7 @@ from app.services.clustering.pipeline import EventClusteringService
 from app.services.collector.ingestion import ArticleIngestionService
 from app.services.analyzer.event_analysis_service import EventAnalysisService
 from app.services.event_management import EventManagementService
+from app.services.processor.translator import TranslationError, TranslationService
 from app.api.v1.websocket import notify_event_update
 from app.tasks.analyze_task import process_event_pipeline
 
@@ -207,6 +208,36 @@ async def get_event(event_id: UUID, db: AsyncSession = Depends(get_db)):
     if not event:
         raise ApiError("event_not_found", "Event not found", 404)
     return envelope(EventRead.model_validate(event).model_dump(mode="json"))
+
+
+@router.post("/{event_id}/translate")
+async def translate_event(event_id: UUID, db: AsyncSession = Depends(get_db)):
+    event = await db.get(Event, event_id)
+    if not event:
+        raise ApiError("event_not_found", "Event not found", 404)
+    source_lang = "en" if event.title_en else "auto"
+    service = TranslationService()
+    try:
+        source_title = event.title_en or event.title
+        title, title_cached = await service.translate_on_demand(
+            source_title,
+            source_lang,
+            "zh",
+            article_id=str(event_id),
+            field="event_title",
+        )
+        if len(title) > max(120, len(source_title) * 4) or "\n" in title:
+            raise TranslationError("事件标题翻译结果过长")
+        summary, summary_cached = await service.translate_on_demand(
+            event.summary or event.title_en or event.title,
+            source_lang,
+            "zh",
+            article_id=str(event_id),
+            field="event_summary",
+        )
+    except TranslationError as exc:
+        raise ApiError("translation_failed", str(exc), 502) from exc
+    return envelope({"title": title, "summary": summary, "cached": title_cached and summary_cached})
 
 
 @router.get("/{event_id}/articles")

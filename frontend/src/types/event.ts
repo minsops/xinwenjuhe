@@ -1,6 +1,10 @@
 export type Event = {
   id: string;
   title: string;
+  title_en?: string | null;
+  title_zh?: string;
+  summary_zh?: string;
+  translation_error?: string;
   summary?: string | null;
   category?: string | null;
   region_primary?: string | null;
@@ -12,4 +16,3 @@ export type Event = {
   heat_score: number;
   last_updated_at?: string | null;
 };
-

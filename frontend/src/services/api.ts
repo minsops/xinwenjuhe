@@ -38,6 +38,11 @@ export async function runEventAnalysis(eventId: string): Promise<EventAnalysis> 
   return data.data;
 }
 
+export async function translateEvent(eventId: string): Promise<{ title: string; summary: string; cached: boolean }> {
+  const { data } = await client.post<Envelope<{ title: string; summary: string; cached: boolean }>>(`/api/v1/events/${eventId}/translate`);
+  return data.data;
+}
+
 export async function fetchSources(): Promise<Source[]> {
   const { data } = await client.get<Envelope<Source[]>>("/api/v1/sources");
   return data.data;
