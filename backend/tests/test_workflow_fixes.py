@@ -64,7 +64,7 @@ class WorkflowFixesTest(unittest.TestCase):
         self.assertIn("Article.id.not_in(already_extracted)", extract_body)
         self.assertNotIn("delete(FactFragment).where(FactFragment.event_id", extract_body)
 
-    def test_fallback_extracts_only_casualty_context_and_not_year(self) -> None:
+    def test_fallback_extracts_title_and_only_casualty_context_not_year(self) -> None:
         article = Article(
             id=uuid.uuid4(),
             source_id=uuid.uuid4(),
@@ -75,10 +75,29 @@ class WorkflowFixesTest(unittest.TestCase):
         )
 
         fragments = FactExtractor()._fallback_extract(article)
+        number_fragments = [fragment for fragment in fragments if fragment["type"] == "number"]
+
+        self.assertEqual(fragments[0]["type"], "what")
+        self.assertIn("事故通报", fragments[0]["content"])
+        self.assertEqual(len(number_fragments), 1)
+        self.assertEqual(number_fragments[0]["numbers"]["description"], "casualties")
+        self.assertEqual(number_fragments[0]["numbers"]["value"], 12)
+
+    def test_fallback_keeps_title_fact_when_no_clear_numbers_exist(self) -> None:
+        article = Article(
+            id=uuid.uuid4(),
+            source_id=uuid.uuid4(),
+            external_url="https://example.test/b",
+            title_original="2026年6月发布事故调查进展",
+            content_original="2026年6月，调查人员公布新的时间线，没有报告伤亡人数。",
+            language="zh-CN",
+        )
+
+        fragments = FactExtractor()._fallback_extract(article)
 
         self.assertEqual(len(fragments), 1)
-        self.assertEqual(fragments[0]["numbers"]["description"], "casualties")
-        self.assertEqual(fragments[0]["numbers"]["value"], 12)
+        self.assertEqual(fragments[0]["type"], "what")
+        self.assertFalse(fragments[0]["numbers"])
 
     def test_duplicate_articles_produce_no_fact_fragments(self) -> None:
         event_id = uuid.uuid4()

@@ -57,7 +57,17 @@ class FactExtractor:
 
     def _fallback_extract(self, article: Article) -> list[dict]:
         text = article.content_original[:2000]
-        fragments: list[dict] = []
+        fragments: list[dict] = [
+            {
+                "type": "what",
+                "content": f"报道标题称：{article.title_original}",
+                "content_en": article.title_original,
+                "entities": {},
+                "numbers": {},
+                "source_attribution": "unattributed",
+                "certainty_level": "reportedly",
+            }
+        ]
         patterns = (
             ("casualties", r"(?P<value>\d+(?:\.\d+)?)\s*人?(?:死亡|遇难|丧生|身亡)"),
             ("injuries", r"(?P<value>\d+(?:\.\d+)?)\s*人?(?:受伤|受伤者|伤者)"),
