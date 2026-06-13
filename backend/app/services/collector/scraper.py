@@ -147,12 +147,16 @@ class WebScraper:
             *(scrape_article(link) for link in deduped_links[: config.get("limit", 20)])
         )
         articles = [article for article in article_rows if article is not None]
-        if not articles and source.scraper_config:
-            logger.warning(
-                "Scraper returned 0 articles for %s (%s); selectors may be outdated",
-                source.name,
-                source.scraper_config.get("list_url"),
-            )
+        if source.scraper_config:
+            if articles:
+                source.scraper_verified_at = datetime.now(timezone.utc)
+            else:
+                source.scraper_verified_at = None
+                logger.warning(
+                    "Scraper returned 0 articles for %s (%s); selectors may be outdated",
+                    source.name,
+                    source.scraper_config.get("list_url"),
+                )
         return articles
 
     async def _list_pages(self, list_url: str, config: dict) -> list[str]:

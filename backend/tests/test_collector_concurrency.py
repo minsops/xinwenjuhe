@@ -113,6 +113,28 @@ class CollectorConcurrencyTest(unittest.TestCase):
         self.assertLessEqual(scraper.max_active, 2)
         self.assert_domain_spaced(scraper.starts)
 
+    def test_scraper_updates_selector_verification_state(self) -> None:
+        if WebScraper is None:
+            raise unittest.SkipTest("scraper dependencies are not installed")
+
+        async def run_case() -> tuple[SimpleNamespace, SimpleNamespace]:
+            verified_source = _scraper_source("verified")
+            stale_source = _scraper_source("stale")
+            verified_scraper = RecordingWebScraper()
+            stale_scraper = EmptyWebScraper()
+
+            verified_articles = await verified_scraper.scrape_source(verified_source)
+            stale_articles = await stale_scraper.scrape_source(stale_source)
+
+            self.assertEqual(len(verified_articles), 4)
+            self.assertEqual(stale_articles, [])
+            return verified_source, stale_source
+
+        verified_source, stale_source = asyncio.run(run_case())
+
+        self.assertIsNotNone(verified_source.scraper_verified_at)
+        self.assertIsNone(stale_source.scraper_verified_at)
+
     def assert_domain_spaced(self, starts: list[float]) -> None:
         """Assert same-domain request starts are separated by the configured test delay."""
         self.assertEqual(len(starts), 4)
@@ -191,6 +213,35 @@ class RecordingWebScraper(WebScraperBase):
             return f"<html><h1>{url}</h1><article>Full article body for {url}</article></html>"
         finally:
             self.active -= 1
+
+
+class EmptyWebScraper(WebScraperBase):
+    """Web scraper that returns no matching links."""
+
+    async def _allowed(self, url: str) -> bool:
+        return True
+
+    async def _fetch_page(self, url: str, *, requires_js: bool = False) -> str:
+        return "<html><main>No article links</main></html>"
+
+
+def _scraper_source(name: str) -> SimpleNamespace:
+    """Build a minimal scraper source for behavior tests."""
+    return SimpleNamespace(
+        id=uuid.uuid4(),
+        name=name,
+        language="en",
+        scraper_verified_at="previous-verification",
+        scraper_config={
+            "list_url": "https://site.test/list",
+            "article_selector": "a",
+            "title_selector": "h1",
+            "content_selector": "article",
+            "limit": 4,
+            "fulltext_concurrency": 2,
+            "request_delay_seconds": 0.01,
+        },
+    )
 
 
 if __name__ == "__main__":
