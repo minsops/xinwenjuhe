@@ -21,7 +21,7 @@ function demoAnalysis(): EventAnalysis {
   return {
     event_id: "demo",
     summary: "多家报道确认夜间发生同一事件，但伤亡数字和责任归属仍存在明显分歧。",
-    consensus_facts: [{ fact: "夜间发生事件，当地应急力量随后介入。", confirmed_by: 2, total: 2, article_ids: ["a1"] }],
+    consensus_facts: [{ fact: "夜间发生事件，当地应急力量随后介入。", confirmed_by: 2, total: 2, article_ids: ["a1"], syndicated_count: 1 }],
     disputed_facts: [{ topic: "不同来源对伤亡人数的说法从 12 人到 200 多人不等。", type: "number_discrepancy", severity: "critical" }],
     blind_spots: [{ description: "多数报道缺少独立现场核验。", mentioned_by: 1, total: 2 }],
     narrative_frames: [
