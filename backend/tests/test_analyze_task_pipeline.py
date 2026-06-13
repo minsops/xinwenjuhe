@@ -6,12 +6,13 @@ from importlib.util import find_spec
 import unittest
 from unittest import mock
 
-if not find_spec("celery") or not find_spec("sqlalchemy"):
-    raise unittest.SkipTest("Celery and SQLAlchemy are required for pipeline tests")
+HAS_PIPELINE_DEPS = bool(find_spec("celery") and find_spec("sqlalchemy") and find_spec("redis"))
 
-from app.tasks.analyze_task import _event_id_from_payload, process_event_pipeline
+if HAS_PIPELINE_DEPS:
+    from app.tasks.analyze_task import _event_id_from_payload, process_event_pipeline
 
 
+@unittest.skipUnless(HAS_PIPELINE_DEPS, "Celery, Redis, and SQLAlchemy are required for pipeline tests")
 class AnalyzeTaskPipelineTest(unittest.TestCase):
     """Validate the current no-group analysis pipeline contract."""
 

@@ -9,16 +9,20 @@ from unittest.mock import patch
 import unittest
 import uuid
 
-if not importlib.util.find_spec("sqlalchemy"):
-    raise unittest.SkipTest("SQLAlchemy is required for workflow tests")
+HAS_WORKFLOW_DEPS = bool(
+    importlib.util.find_spec("celery")
+    and importlib.util.find_spec("redis")
+    and importlib.util.find_spec("sqlalchemy")
+)
 
-from app.models.article import Article
-from app.models.fact_fragment import FactFragment
-from app.services.analyzer.event_analysis_service import EventAnalysisService
-from app.services.analyzer.fact_extractor import FactExtractor
-from app.tasks import analyze_task
-from app.tasks.collect_task import MIN_BACKFILL_FULLTEXT_LENGTH, _is_better_fulltext
-from app.tasks.worker_db import worker_session
+if HAS_WORKFLOW_DEPS:
+    from app.models.article import Article
+    from app.models.fact_fragment import FactFragment
+    from app.services.analyzer.event_analysis_service import EventAnalysisService
+    from app.services.analyzer.fact_extractor import FactExtractor
+    from app.tasks import analyze_task
+    from app.tasks.collect_task import MIN_BACKFILL_FULLTEXT_LENGTH, _is_better_fulltext
+    from app.tasks.worker_db import worker_session
 
 
 TEST_DIR = Path(__file__).resolve().parent
@@ -28,6 +32,7 @@ ROOT = HOST_ROOT if (HOST_ROOT / "backend").exists() else CONTAINER_ROOT
 BACKEND_ROOT = ROOT / "backend" if (ROOT / "backend").exists() else ROOT
 
 
+@unittest.skipUnless(HAS_WORKFLOW_DEPS, "Celery, Redis, and SQLAlchemy are required for workflow tests")
 class WorkflowFixesTest(unittest.TestCase):
     """Validate worker, extraction, and pipeline contracts."""
 
