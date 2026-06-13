@@ -18,6 +18,11 @@ test("renders TruthPuzzle dashboard", async ({ page }) => {
   if ((page.viewportSize()?.width ?? 0) >= 1280) {
     await expect(eventCard.getByText(/3 报道/)).toBeVisible();
     await expect(eventCard.getByText(/2 语言/)).toBeVisible();
+    await eventCard.getByRole("button", { name: "显示原文" }).click();
+    const originalEventCard = page.getByRole("button", { name: /Cross-border incident draws/ });
+    await expect(originalEventCard).toBeVisible();
+    await originalEventCard.getByRole("button", { name: "显示中文" }).click();
+    await expect(eventCard.getByText("边境事件出现相互矛盾的伤亡报道")).toBeVisible();
   }
   await expect(page.getByRole("article").getByRole("button", { name: /显示原文|显示中文/ }).first()).toBeVisible();
   const categoryFilter = page.getByRole("combobox").filter({ hasText: /All categories|全部分类/ });
