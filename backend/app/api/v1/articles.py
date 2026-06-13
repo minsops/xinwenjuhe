@@ -18,6 +18,29 @@ from app.services.processor.translator import TranslationError, TranslationServi
 router = APIRouter()
 
 
+def _translation_fallback_response(target_lang: str, error: TranslationError) -> TranslateResponse:
+    """Return an honest Chinese fallback instead of leaving the article panel blank."""
+    if target_lang.lower().startswith("zh"):
+        return TranslateResponse(
+            title="自动翻译暂不可用，请查看原文标题",
+            content=(
+                "自动翻译服务没有返回可用的中文译文。"
+                "这通常表示还没有配置真实翻译模型，或模型返回了原文。"
+                "请点击“显示原文”查看原始报道；原文语言已在文章信息中标注。"
+            ),
+            cached=False,
+            fallback=True,
+            message=f"翻译暂不可用：{error}",
+        )
+    return TranslateResponse(
+        title="Translation unavailable; view the original title",
+        content="The translation service did not return usable translated text. Use the original view for the source article.",
+        cached=False,
+        fallback=True,
+        message=f"Translation unavailable: {error}",
+    )
+
+
 @router.get("/{article_id}")
 async def get_article(article_id: UUID, db: AsyncSession = Depends(get_db)):
     article = (
@@ -50,7 +73,8 @@ async def translate_article(article_id: UUID, payload: TranslateRequest, db: Asy
             field="content",
         )
     except TranslationError as exc:
-        raise ApiError("translation_failed", str(exc), 502) from exc
+        response = _translation_fallback_response(payload.target_lang, exc)
+        return envelope(response.model_dump())
     if payload.target_lang == "en":
         article.title_translated = title
         article.content_translated = content

@@ -238,8 +238,20 @@ async def translate_event(event_id: UUID, db: AsyncSession = Depends(get_db)):
             field="event_summary",
         )
     except TranslationError as exc:
-        raise ApiError("translation_failed", str(exc), 502) from exc
-    return envelope({"title": title, "summary": summary, "cached": title_cached and summary_cached})
+        return envelope(
+            {
+                "title": "自动翻译暂不可用，请查看原始事件标题",
+                "summary": (
+                    "自动翻译服务没有返回可用的中文事件摘要。"
+                    "这通常表示还没有配置真实翻译模型，或模型返回了原文。"
+                    "当前页面仍会显示本站生成的中文分析；原始报道可在文章区点击“显示原文”查看。"
+                ),
+                "cached": False,
+                "fallback": True,
+                "message": f"翻译暂不可用：{exc}",
+            }
+        )
+    return envelope({"title": title, "summary": summary, "cached": title_cached and summary_cached, "fallback": False})
 
 
 @router.get("/{event_id}/articles")

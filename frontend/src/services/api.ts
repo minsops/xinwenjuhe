@@ -38,8 +38,17 @@ export async function runEventAnalysis(eventId: string): Promise<EventAnalysis> 
   return data.data;
 }
 
-export async function translateEvent(eventId: string): Promise<{ title: string; summary: string; cached: boolean }> {
-  const { data } = await client.post<Envelope<{ title: string; summary: string; cached: boolean }>>(`/api/v1/events/${eventId}/translate`);
+type TranslationResult = {
+  title: string;
+  summary?: string;
+  content?: string;
+  cached: boolean;
+  fallback?: boolean;
+  message?: string;
+};
+
+export async function translateEvent(eventId: string): Promise<TranslationResult & { summary: string }> {
+  const { data } = await client.post<Envelope<TranslationResult & { summary: string }>>(`/api/v1/events/${eventId}/translate`);
   return data.data;
 }
 
@@ -48,8 +57,8 @@ export async function fetchSources(): Promise<Source[]> {
   return data.data;
 }
 
-export async function translateArticle(articleId: string, targetLang: string) {
-  const { data } = await client.post<Envelope<{ title: string; content: string; cached: boolean }>>(
+export async function translateArticle(articleId: string, targetLang: string): Promise<TranslationResult & { content: string }> {
+  const { data } = await client.post<Envelope<TranslationResult & { content: string }>>(
     `/api/v1/articles/${articleId}/translate`,
     { target_lang: targetLang }
   );

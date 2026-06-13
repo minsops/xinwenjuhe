@@ -13,6 +13,7 @@ from app.services.processor.translator import (
     TranslationError,
     TranslationService,
 )
+from app.api.v1.articles import _translation_fallback_response
 
 
 class TranslationServiceTest(unittest.TestCase):
@@ -36,6 +37,14 @@ class TranslationServiceTest(unittest.TestCase):
 
         with self.assertRaises(TranslationError):
             TranslationService._validate_translation("hello world", "translated text", "en", "zh")
+
+    def test_article_translation_failure_returns_honest_chinese_fallback(self) -> None:
+        response = _translation_fallback_response("zh", TranslationError("翻译服务返回了原文"))
+
+        self.assertTrue(response.fallback)
+        self.assertFalse(response.cached)
+        self.assertIn("自动翻译服务没有返回可用的中文译文", response.content)
+        self.assertIn("翻译服务返回了原文", response.message or "")
 
 
 if __name__ == "__main__":

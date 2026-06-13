@@ -59,4 +59,5 @@ class TranslateResponse(BaseModel):
     title: str
     content: str
     cached: bool
-
+    fallback: bool = False
+    message: str | None = None
