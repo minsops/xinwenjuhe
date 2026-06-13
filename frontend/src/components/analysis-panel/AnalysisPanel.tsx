@@ -21,6 +21,7 @@ type Props = {
 export function AnalysisPanel({ analysis, eventId, sourceLabels = {}, onFactSelect, onReanalyze }: Props) {
   const [running, setRunning] = useState(false);
   const [reanalyzeNotice, setReanalyzeNotice] = useState<string | undefined>();
+  const analyzedReportCount = analysis.article_count_at_analysis ?? analysis.consensus_facts[0]?.total ?? 0;
 
   async function handleReanalyze() {
     if (!eventId || running) return;
@@ -64,7 +65,7 @@ export function AnalysisPanel({ analysis, eventId, sourceLabels = {}, onFactSele
           summary={analysis.summary}
           summaryOriginal={analysis.summary_original}
           summaryOriginalLanguage={analysis.summary_original_language}
-          count={analysis.consensus_facts[0]?.total ?? 0}
+          count={analyzedReportCount}
         />
         <ConsensusZone items={analysis.consensus_facts} onFactSelect={onFactSelect} />
         <DisputeZone items={analysis.disputed_facts} />
