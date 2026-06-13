@@ -194,6 +194,7 @@ async def _deduplicate_articles(task_id: str, payload: dict) -> dict:
     wire_copies = 0
     canonical_articles: list[Article] = []
     duplicate_article_ids: list[UUID] = []
+    wire_by_article_id: dict[UUID, str] = {}
     async with worker_session() as db:
         articles = (
             await db.execute(
@@ -207,6 +208,7 @@ async def _deduplicate_articles(task_id: str, payload: dict) -> dict:
             wire_agency = deduplicator.detect_wire_copy(article.content_original)
             if wire_agency:
                 metadata["wire_agency"] = wire_agency
+                wire_by_article_id[article.id] = wire_agency
                 wire_copies += 1
             duplicate_of = next(
                 (
@@ -226,6 +228,16 @@ async def _deduplicate_articles(task_id: str, payload: dict) -> dict:
             article.article_metadata = metadata
         if duplicate_article_ids:
             await db.execute(delete(FactFragment).where(FactFragment.article_id.in_(duplicate_article_ids)))
+        if wire_by_article_id:
+            wire_article_ids = list(wire_by_article_id)
+            existing_fragments = (
+                await db.execute(select(FactFragment).where(FactFragment.article_id.in_(wire_article_ids)))
+            ).scalars().all()
+            for fragment in existing_fragments:
+                wire_agency = wire_by_article_id.get(fragment.article_id)
+                if not wire_agency:
+                    continue
+                fragment.entities = {**(fragment.entities or {}), "_via_wire": wire_agency}
         await db.commit()
     set_progress(
         task_id,

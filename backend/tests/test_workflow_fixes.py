@@ -13,8 +13,10 @@ if not importlib.util.find_spec("sqlalchemy"):
     raise unittest.SkipTest("SQLAlchemy is required for workflow tests")
 
 from app.models.article import Article
+from app.models.fact_fragment import FactFragment
 from app.services.analyzer.event_analysis_service import EventAnalysisService
 from app.services.analyzer.fact_extractor import FactExtractor
+from app.tasks import analyze_task
 from app.tasks.collect_task import MIN_BACKFILL_FULLTEXT_LENGTH, _is_better_fulltext
 from app.tasks.worker_db import worker_session
 
@@ -156,6 +158,74 @@ class WorkflowFixesTest(unittest.TestCase):
         self.assertEqual(len(fragments), 1)
         self.assertEqual(fragments[0].article_id, original.id)
         self.assertEqual(fragments[0].entities["_via_wire"], "REUTERS")
+
+    def test_deduplicate_updates_existing_fragments_with_wire_marker(self) -> None:
+        event_id = uuid.uuid4()
+        article = Article(
+            id=uuid.uuid4(),
+            source_id=uuid.uuid4(),
+            external_url="https://example.test/reuters",
+            title_original="Wire report",
+            content_original="Reuters reported the latest casualty figures from officials.",
+            language="en",
+            article_metadata={},
+        )
+        fragment = FactFragment(
+            id=uuid.uuid4(),
+            event_id=event_id,
+            article_id=article.id,
+            source_id=article.source_id,
+            fragment_type="what",
+            content="已有事实碎片",
+            content_en="Existing fact fragment",
+            entities={"actor": "officials"},
+            numbers={},
+            source_attribution="unattributed",
+            certainty_level="reportedly",
+            embedding=[1.0, 0.0, 0.0],
+        )
+
+        class FakeResult:
+            def __init__(self, rows: list) -> None:
+                self.rows = rows
+
+            def scalars(self) -> "FakeResult":
+                return self
+
+            def all(self) -> list:
+                return self.rows
+
+        class FakeDB:
+            def __init__(self) -> None:
+                self.select_calls = 0
+                self.committed = False
+
+            async def execute(self, query) -> FakeResult:
+                self.select_calls += 1
+                return FakeResult([article] if self.select_calls == 1 else [fragment])
+
+            async def commit(self) -> None:
+                self.committed = True
+
+        class FakeSession:
+            def __init__(self, db: FakeDB) -> None:
+                self.db = db
+
+            async def __aenter__(self) -> FakeDB:
+                return self.db
+
+            async def __aexit__(self, exc_type, exc, tb) -> None:
+                return None
+
+        db = FakeDB()
+        with patch("app.tasks.analyze_task.worker_session", return_value=FakeSession(db)):
+            result = asyncio.run(analyze_task._deduplicate_articles("task-id", {"event_id": str(event_id)}))
+
+        self.assertTrue(db.committed)
+        self.assertEqual(result["wire_copies"], 1)
+        self.assertEqual(article.article_metadata["wire_agency"], "REUTERS")
+        self.assertEqual(fragment.entities["actor"], "officials")
+        self.assertEqual(fragment.entities["_via_wire"], "REUTERS")
 
     def test_fact_extraction_is_concurrent_and_skips_failed_articles(self) -> None:
         event_id = uuid.uuid4()
