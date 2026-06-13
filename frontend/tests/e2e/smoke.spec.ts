@@ -119,6 +119,7 @@ test("does not show stale english translation cache as Chinese", async ({ page }
             content_original: "Original English article body with enough text to be a normal report. It should only appear after the user chooses the original view.",
             content_translated: "Old cached English body that must not appear inside the Chinese translation view.",
             language: "en",
+            author: "Reuters",
             published_at: new Date().toISOString(),
             source: { id: "reuters", name: "Reuters", country: "United Kingdom", region: "europe", language: "en", composite_credibility: 86 },
           }],
@@ -157,6 +158,8 @@ test("does not show stale english translation cache as Chinese", async ({ page }
   await expect(page.getByText("自动翻译暂不可用：当前显示中文说明，可点击“显示原文”查看来源原文。")).toBeVisible();
   await expect(page.getByText("这篇报道暂时没有可用的中文标题")).toBeVisible();
   await expect(page.getByText("基于 1 篇报道")).toBeVisible();
+  await expect(page.getByText("署名：路透社")).toBeVisible();
+  await expect(page.getByText("署名：Reuters")).toHaveCount(0);
   await expect(page.getByText("Old cached English title")).toHaveCount(0);
   await expect(page.getByText("Old cached English body that must not appear inside the Chinese translation view.")).toHaveCount(0);
 });

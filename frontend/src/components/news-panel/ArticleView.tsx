@@ -33,6 +33,7 @@ export function ArticleView({ article, showingChinese, loadingTranslation, trans
   const savedChineseContent = usableChineseText(article.content_translated);
   const sourceChineseName = formatSourceChineseName(source?.name, source?.name_en);
   const sourceOriginalName = formatSourceOriginalName(source?.name, source?.name_en);
+  const byline = formatByline(article.author, article.language || source?.language);
   const title = showingChinese
     ? translatedTitle ?? savedChineseTitle ?? (loadingTranslation ? "正在翻译标题..." : "这篇报道暂时没有可用的中文标题")
     : article.title_original;
@@ -55,9 +56,18 @@ export function ArticleView({ article, showingChinese, loadingTranslation, trans
     <article className="mx-auto max-w-[840px] px-5 py-6 lg:px-7">
       <div className="mb-5 rounded-3xl border border-stone-200 bg-stone-50/80 p-4 shadow-sm dark:border-stone-800 dark:bg-stone-900/50">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm text-stone-600 dark:text-stone-300">
+          <div className="min-w-0 text-sm text-stone-600 dark:text-stone-300">
             <span>{formatDate(article.published_at)}</span>
-            {article.author ? <span> · {article.author}</span> : null}
+            {byline ? (
+              <div className="mt-1">
+                <OriginalText
+                  className="font-medium text-stone-700 dark:text-stone-200"
+                  text={byline.text}
+                  original={byline.original}
+                  originalLanguage={byline.language}
+                />
+              </div>
+            ) : null}
           </div>
           <TranslateButton showingChinese={showingChinese} loading={loadingTranslation} onShowChinese={onShowChinese} onShowOriginal={onShowOriginal} />
         </div>
@@ -141,6 +151,17 @@ function MetaItem({ label, value, children }: { label: string; value?: string; c
       <div className="mt-1 font-semibold text-stone-800 dark:text-stone-100">{children ?? value}</div>
     </div>
   );
+}
+
+function formatByline(author?: string | null, language?: string | null): { text: string; original?: string; language: string } | undefined {
+  const original = author?.trim();
+  if (!original) return undefined;
+  const localized = formatSourceChineseName(original, original);
+  return {
+    text: `署名：${localized}`,
+    original: localized !== original ? `署名：${original}` : undefined,
+    language: language ?? "auto",
+  };
 }
 
 function articleParagraphs(content: string): string[] {
