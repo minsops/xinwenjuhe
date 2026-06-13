@@ -8,21 +8,28 @@ export function useEvent(query: EventQuery = {}) {
   const queryKey = JSON.stringify(query);
 
   useEffect(() => {
+    let active = true;
     fetchEvents(query)
       .then((rows) => {
+        if (!active) return;
         const pendingRows = rows.map(prepareEventForChineseDisplay);
         setEvents(pendingRows);
         setSelected((current) => pendingRows.find((event) => event.id === current?.id) ?? pendingRows[0]);
         void translateEvents(rows).then((translatedRows) => {
+          if (!active) return;
           setEvents(translatedRows);
           setSelected((current) => translatedRows.find((event) => event.id === current?.id) ?? translatedRows[0]);
         });
       })
       .catch(() => {
+        if (!active) return;
         const fallback = demoEvent();
         setEvents([fallback]);
         setSelected(fallback);
       });
+    return () => {
+      active = false;
+    };
   }, [queryKey]);
 
   return { events, selected, setSelected };

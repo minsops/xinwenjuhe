@@ -335,6 +335,83 @@ test("clears stale reports when filters remove all events", async ({ page }) => 
   await expect(page.getByText("官员称夜间袭击造成 12 人死亡")).toHaveCount(0);
 });
 
+test("ignores stale event responses after filters change", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route("**/api/v1/**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === "/api/v1/events") {
+      const event = url.searchParams.get("category") === "technology"
+        ? {
+            id: "filtered-event",
+            title: "筛选后的科技事件",
+            summary: "新筛选结果。",
+            category: "technology",
+            region_primary: "east_asia",
+            status: "active",
+            article_count: 0,
+            source_count: 1,
+            language_count: 1,
+            region_count: 1,
+            heat_score: 30,
+            last_updated_at: new Date().toISOString(),
+          }
+        : {
+            id: "stale-event",
+            title: "过期的初始事件",
+            summary: "慢请求返回的旧结果。",
+            category: "conflict",
+            region_primary: "middle_east",
+            status: "active",
+            article_count: 0,
+            source_count: 1,
+            language_count: 1,
+            region_count: 1,
+            heat_score: 80,
+            last_updated_at: new Date().toISOString(),
+          };
+      const delay = url.searchParams.get("category") === "technology" ? 0 : 600;
+      return new Promise<void>((resolve) => {
+        setTimeout(() => {
+          void route.fulfill({ json: { data: [event] } }).then(resolve);
+        }, delay);
+      });
+    }
+    if (url.pathname.endsWith("/articles")) {
+      return route.fulfill({ json: { data: [] } });
+    }
+    if (url.pathname.endsWith("/analysis")) {
+      return route.fulfill({
+        json: {
+          data: {
+            event_id: "filtered-event",
+            summary: "筛选事件分析",
+            analysis_version: 1,
+            article_count_at_analysis: 0,
+            consensus_facts: [],
+            disputed_facts: [],
+            blind_spots: [],
+            narrative_frames: [],
+            source_graph: { nodes: [], edges: [] },
+            timeline: [],
+          },
+        },
+      });
+    }
+    if (url.pathname === "/api/v1/tasks") {
+      return route.fulfill({ json: { data: { history: [], queue_depth: null } } });
+    }
+    return route.abort();
+  });
+
+  await page.goto("/");
+  await page.locator("select[aria-label='按分类筛选']").last().selectOption("technology");
+
+  await expect(page.locator("h1", { hasText: "筛选后的科技事件" })).toBeVisible();
+  await page.waitForTimeout(800);
+  await expect(page.locator("h1", { hasText: "筛选后的科技事件" })).toBeVisible();
+  await expect(page.getByText("过期的初始事件")).toHaveCount(0);
+});
+
 test("localizes unknown operation task codes", async ({ page }) => {
   await page.route("**/api/v1/**", (route) => route.abort());
   await page.route("**/api/v1/tasks", (route) =>
