@@ -2,8 +2,8 @@ export type Event = {
   id: string;
   title: string;
   title_en?: string | null;
-  title_zh?: string;
-  summary_zh?: string;
+  title_zh?: string | null;
+  summary_zh?: string | null;
   translation_error?: string;
   summary?: string | null;
   category?: string | null;

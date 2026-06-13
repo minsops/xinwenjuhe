@@ -37,11 +37,11 @@ export function useEvent(query: EventQuery = {}) {
 
 function prepareEventForChineseDisplay(event: Event): Event {
   if (event.id === "demo") return event;
-  if (isChineseText(event.title) && (!event.summary || isChineseText(event.summary))) return event;
+  if (hasChineseEventDisplay(event)) return normalizeChineseFields(event);
   return {
     ...event,
-    title_zh: "正在翻译中文标题...",
-    summary_zh: "正在翻译中文摘要..."
+    title_zh: event.title_zh ?? "正在翻译中文标题...",
+    summary_zh: event.summary_zh ?? "正在翻译中文摘要..."
   };
 }
 
@@ -49,7 +49,7 @@ async function translateEvents(events: Event[]): Promise<Event[]> {
   return Promise.all(
     events.map(async (event) => {
       if (event.id === "demo") return event;
-      if (isChineseText(event.title) && (!event.summary || isChineseText(event.summary))) return event;
+      if (hasChineseEventDisplay(event)) return normalizeChineseFields(event);
       try {
         const translated = await translateEvent(event.id);
         return { ...event, title_zh: translated.title, summary_zh: translated.summary };
@@ -67,6 +67,21 @@ async function translateEvents(events: Event[]): Promise<Event[]> {
 
 function isChineseText(value: string): boolean {
   return /[\u4e00-\u9fff]/.test(value);
+}
+
+function hasChineseEventDisplay(event: Event): boolean {
+  const titleIsChinese = Boolean(event.title_zh && isChineseText(event.title_zh)) || isChineseText(event.title);
+  const summaryIsChinese =
+    !event.summary || Boolean(event.summary_zh && isChineseText(event.summary_zh)) || isChineseText(event.summary);
+  return titleIsChinese && summaryIsChinese;
+}
+
+function normalizeChineseFields(event: Event): Event {
+  return {
+    ...event,
+    title_zh: event.title_zh ?? (isChineseText(event.title) ? event.title : undefined),
+    summary_zh: event.summary_zh ?? (event.summary && isChineseText(event.summary) ? event.summary : undefined)
+  };
 }
 
 function demoEvent(): Event {

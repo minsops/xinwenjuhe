@@ -96,6 +96,27 @@ def _article_cursor(article: Article) -> str:
     )
 
 
+def _has_readable_chinese(value: str | None) -> bool:
+    if not value:
+        return False
+    cjk_chars = sum(1 for char in value if "\u4e00" <= char <= "\u9fff")
+    threshold = max(2, min(12, len(value.strip()) // 15))
+    return cjk_chars >= threshold and not TranslationService._has_long_latin_sentence(value)
+
+
+def _event_has_chinese_display(event: Event) -> bool:
+    has_title = _has_readable_chinese(event.title_zh) or _has_readable_chinese(event.title)
+    has_summary = not event.summary or _has_readable_chinese(event.summary_zh) or _has_readable_chinese(event.summary)
+    return has_title and has_summary
+
+
+async def _persist_event_chinese(event: Event, db: AsyncSession, title: str, summary: str | None) -> None:
+    event.title_zh = title
+    event.summary_zh = summary
+    await db.commit()
+    await db.refresh(event)
+
+
 def _apply_event_cursor(stmt: Select, cursor: str, sort: str) -> Select:
     payload = _decode_cursor(cursor, f"events:{sort}")
     event_id = UUID(payload["id"])
@@ -217,6 +238,13 @@ async def translate_event(event_id: UUID, db: AsyncSession = Depends(get_db)):
     event = await db.get(Event, event_id)
     if not event:
         raise ApiError("event_not_found", "Event not found", 404)
+    if _event_has_chinese_display(event):
+        title = event.title_zh if _has_readable_chinese(event.title_zh) else event.title
+        summary = event.summary_zh if _has_readable_chinese(event.summary_zh) else event.summary
+        if title != event.title_zh or summary != event.summary_zh:
+            await _persist_event_chinese(event, title, summary)
+        return envelope({"title": title, "summary": summary, "cached": True, "fallback": False, "persisted": True})
+
     source_lang = "en" if event.title_en else "auto"
     service = TranslationService()
     try:
@@ -237,6 +265,9 @@ async def translate_event(event_id: UUID, db: AsyncSession = Depends(get_db)):
             article_id=str(event_id),
             field="event_summary",
         )
+        if not _has_readable_chinese(title) or not _has_readable_chinese(summary):
+            raise TranslationError("事件翻译结果不是可用中文")
+        await _persist_event_chinese(event, title, summary)
     except TranslationError as exc:
         return envelope(
             {
@@ -251,7 +282,9 @@ async def translate_event(event_id: UUID, db: AsyncSession = Depends(get_db)):
                 "message": f"翻译暂不可用：{exc}",
             }
         )
-    return envelope({"title": title, "summary": summary, "cached": title_cached and summary_cached, "fallback": False})
+    return envelope(
+        {"title": title, "summary": summary, "cached": title_cached and summary_cached, "fallback": False, "persisted": True}
+    )
 
 
 @router.get("/{event_id}/articles")

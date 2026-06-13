@@ -16,7 +16,9 @@ class EventRead(BaseModel):
     id: UUID
     title: str
     title_en: str | None = None
+    title_zh: str | None = None
     summary: str | None = None
+    summary_zh: str | None = None
     category: str | None = None
     region_primary: str | None = None
     regions_involved: list[str] | None = None
