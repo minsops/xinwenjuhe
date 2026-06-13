@@ -88,3 +88,32 @@ test("shows actionable empty state when no events exist", async ({ page }) => {
   await expect(page.getByText(/先点击“采集全部来源”/).last()).toBeVisible();
   await expect(page.getByText("请选择一个事件查看本站分析和来源报道。")).toBeVisible();
 });
+
+test("localizes unknown operation task codes", async ({ page }) => {
+  await page.route("**/api/v1/**", (route) => route.abort());
+  await page.route("**/api/v1/tasks", (route) =>
+    route.fulfill({
+      json: {
+        data: {
+          history: [
+            {
+              task_id: "4374af6d-65e3-4259-8db4-e3e7fb24ff7a",
+              step: "app.tasks.internal.unmapped_internal_step",
+              status: "retrying_internal_state",
+              updated_at: new Date().toISOString(),
+            },
+          ],
+          queue_depth: 1,
+        },
+      },
+    })
+  );
+
+  await page.goto("/");
+
+  await expect(page.getByText("其他后台任务")).toHaveCount(2);
+  await expect(page.getByText("未知状态")).toHaveCount(2);
+  await expect(page.getByText("unmapped_internal_step")).toHaveCount(0);
+  await expect(page.getByText("retrying_internal_state")).toHaveCount(0);
+  await expect(page.getByText("4374af6d-65e3-4259-8db4-e3e7fb24ff7a")).toHaveCount(0);
+});

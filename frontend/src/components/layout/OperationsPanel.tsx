@@ -107,7 +107,7 @@ export function OperationsPanel({ overview }: Props) {
             <div className="flex items-center justify-between gap-2">
               <span className="inline-flex min-w-0 items-center gap-1">
                 <ListChecks className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{formatTaskName(item.step ?? item.task_id)}</span>
+                <span className="truncate">{formatTaskName(item.step)}</span>
               </span>
               <Badge tone={item.status === "complete" ? "green" : "blue"}>{formatTaskStatus(item.status)}</Badge>
             </div>
@@ -127,7 +127,7 @@ function formatTaskStatus(status?: string | null): string {
     failed: "失败",
     unknown: "未知"
   };
-  return map[status ?? "unknown"] ?? status ?? map.unknown;
+  return map[status ?? "unknown"] ?? "未知状态";
 }
 
 function formatTaskName(name?: string | null): string {
@@ -150,5 +150,5 @@ function formatTaskName(name?: string | null): string {
   };
   const parts = value.split(".");
   const shortName = parts[parts.length - 1] || value;
-  return map[shortName] ?? (shortName || "未知任务");
+  return map[shortName] ?? (shortName ? "其他后台任务" : "后台任务");
 }
