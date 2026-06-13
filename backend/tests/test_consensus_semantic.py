@@ -6,6 +6,7 @@ import asyncio
 import importlib.util
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 import uuid
 
 if not importlib.util.find_spec("sqlalchemy"):
@@ -112,6 +113,35 @@ class ConsensusSemanticTest(unittest.TestCase):
         self.assertGreaterEqual(_cjk_count(localized["summary"]), 6)
         self.assertEqual(localized["summary_original"], "Two independent sources report a strike while details remain limited.")
         self.assertEqual(localized["summary_original_language"], "auto")
+
+    def test_localize_payload_explains_blind_spot_translation_fallback(self) -> None:
+        payload = {
+            "summary": "中文概要",
+            "consensus_facts": [],
+            "disputed_facts": [],
+            "blind_spots": [
+                {
+                    "description": "Only one regional outlet reported damage near the port.",
+                    "mentioned_by": 1,
+                    "total": 5,
+                }
+            ],
+            "timeline": [],
+        }
+
+        async def fail_translation(*args, **kwargs):
+            from app.services.processor.translator import TranslationError
+
+            raise TranslationError("翻译服务返回了原文")
+
+        with patch("app.services.processor.translator.TranslationService.translate_on_demand", fail_translation):
+            localized = asyncio.run(ConsensusMapper(llm=EmptyLLM()).localize_payload(payload))
+
+        blind_spot = localized["blind_spots"][0]
+        self.assertIn("报道盲区", blind_spot["description"])
+        self.assertIn("覆盖不足", blind_spot["description"])
+        self.assertEqual(blind_spot["description_original"], "Only one regional outlet reported damage near the port.")
+        self.assertEqual(blind_spot["description_original_language"], "auto")
 
     def test_wire_reposts_count_as_one_independent_source(self) -> None:
         event_id = uuid.uuid4()

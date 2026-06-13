@@ -106,13 +106,40 @@ class ConsensusMapper:
             fallback="这条事件概要暂时没有可用中文翻译。请查看原文。",
         )
         for item in (payload.get("consensus_facts") or [])[:12]:
-            await self._translate_item_field(item, "fact", "fact_original", translator)
+            await self._translate_item_field(
+                item,
+                "fact",
+                "fact_original",
+                translator,
+                fallback="这条共识事实暂时没有可用中文翻译。请点击“显示原文”查看原始表述。",
+            )
         for item in (payload.get("disputed_facts") or [])[:20]:
-            await self._translate_item_field(item, "topic", "topic_original", translator)
+            await self._translate_item_field(
+                item,
+                "topic",
+                "topic_original",
+                translator,
+                fallback="这条争议点暂时没有可用中文翻译。请点击“显示原文”查看原始表述。",
+            )
         for item in (payload.get("blind_spots") or [])[:12]:
-            await self._translate_item_field(item, "description", "description_original", translator)
+            await self._translate_item_field(
+                item,
+                "description",
+                "description_original",
+                translator,
+                fallback=(
+                    "这是一条报道盲区线索，但暂时没有可用中文翻译。"
+                    "它表示只有少数来源提到、覆盖不足，需要点击“显示原文”继续核验。"
+                ),
+            )
         for item in (payload.get("timeline") or [])[:8]:
-            await self._translate_item_field(item, "fact", "fact_original", translator)
+            await self._translate_item_field(
+                item,
+                "fact",
+                "fact_original",
+                translator,
+                fallback="这条时间轴事实暂时没有可用中文翻译。请点击“显示原文”查看原始表述。",
+            )
         return payload
 
     @classmethod
@@ -149,6 +176,7 @@ class ConsensusMapper:
         field: str,
         original_field: str,
         translator: TranslationService,
+        fallback: str,
     ) -> None:
         value = item.get(field)
         if not isinstance(value, str) or not value.strip() or not cls._needs_chinese_translation(value):
@@ -163,7 +191,7 @@ class ConsensusMapper:
                 field=f"analysis_{field}",
             )
         except TranslationError:
-            translated = "这条分析项暂时没有可用中文翻译。请查看原文。"
+            translated = fallback
         item[field] = translated
 
     @staticmethod
