@@ -49,7 +49,7 @@ class ConsensusSemanticTest(unittest.TestCase):
         self.assertEqual(payload["consensus_facts"][0]["confirmed_by"], 2)
         self.assertEqual(len(payload["consensus_facts"][0]["article_ids"]), 2)
         self.assertEqual(payload["consensus_facts"][0]["fact_original"], "Military base was hit by missiles")
-        self.assertEqual(payload["consensus_facts"][0]["fact_original_language"], "auto")
+        self.assertEqual(payload["consensus_facts"][0]["fact_original_language"], "en")
 
     def test_dissimilar_fragments_stay_separate(self) -> None:
         event_id = uuid.uuid4()
@@ -112,7 +112,7 @@ class ConsensusSemanticTest(unittest.TestCase):
         self.assertNotEqual(localized["summary"], localized["summary_original"])
         self.assertGreaterEqual(_cjk_count(localized["summary"]), 6)
         self.assertEqual(localized["summary_original"], "Two independent sources report a strike while details remain limited.")
-        self.assertEqual(localized["summary_original_language"], "auto")
+        self.assertEqual(localized["summary_original_language"], "en")
 
     def test_localize_payload_explains_blind_spot_translation_fallback(self) -> None:
         payload = {
@@ -141,7 +141,14 @@ class ConsensusSemanticTest(unittest.TestCase):
         self.assertIn("报道盲区", blind_spot["description"])
         self.assertIn("覆盖不足", blind_spot["description"])
         self.assertEqual(blind_spot["description_original"], "Only one regional outlet reported damage near the port.")
-        self.assertEqual(blind_spot["description_original_language"], "auto")
+        self.assertEqual(blind_spot["description_original_language"], "en")
+
+    def test_guess_language_labels_common_original_scripts(self) -> None:
+        mapper = ConsensusMapper(llm=EmptyLLM())
+
+        self.assertEqual(mapper._guess_language("Military base was hit by missiles"), "en")
+        self.assertEqual(mapper._guess_language("Военные сообщили о новых ударах"), "ru")
+        self.assertEqual(mapper._guess_language("政府は新たな調査を発表した"), "ja")
 
     def test_wire_reposts_count_as_one_independent_source(self) -> None:
         event_id = uuid.uuid4()

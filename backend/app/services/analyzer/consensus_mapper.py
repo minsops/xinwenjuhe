@@ -155,13 +155,14 @@ class ConsensusMapper:
         value = payload.get(field)
         if not isinstance(value, str) or not value.strip() or not cls._needs_chinese_translation(value):
             return
+        source_language = cls._guess_language(value)
         if preserve_original:
             payload.setdefault(original_field, value)
-            payload.setdefault(f"{original_field}_language", "auto")
+            payload.setdefault(f"{original_field}_language", source_language)
         try:
             translated, _ = await translator.translate_on_demand(
                 value,
-                "auto",
+                source_language,
                 "zh",
                 field=f"analysis_{field}",
             )
@@ -181,12 +182,13 @@ class ConsensusMapper:
         value = item.get(field)
         if not isinstance(value, str) or not value.strip() or not cls._needs_chinese_translation(value):
             return
+        source_language = cls._guess_language(value)
         item.setdefault(original_field, value)
-        item.setdefault(f"{original_field}_language", "auto")
+        item.setdefault(f"{original_field}_language", source_language)
         try:
             translated, _ = await translator.translate_on_demand(
                 value,
-                "auto",
+                source_language,
                 "zh",
                 field=f"analysis_{field}",
             )
@@ -207,6 +209,34 @@ class ConsensusMapper:
         if chinese_count < 6:
             return True
         return latin_count > chinese_count * 1.5
+
+    @staticmethod
+    def _guess_language(value: str) -> str:
+        text = value.strip()
+        if not text:
+            return "auto"
+        ranges = [
+            ("ja", "\u3040", "\u30ff"),
+            ("ko", "\uac00", "\ud7af"),
+            ("ar", "\u0600", "\u06ff"),
+            ("he", "\u0590", "\u05ff"),
+            ("th", "\u0e00", "\u0e7f"),
+            ("bn", "\u0980", "\u09ff"),
+            ("hi", "\u0900", "\u097f"),
+            ("ta", "\u0b80", "\u0bff"),
+            ("te", "\u0c00", "\u0c7f"),
+            ("el", "\u0370", "\u03ff"),
+        ]
+        for language, start, end in ranges:
+            if any(start <= char <= end for char in text):
+                return language
+        if any("\u4e00" <= char <= "\u9fff" for char in text):
+            return "zh"
+        if any("\u0400" <= char <= "\u04ff" for char in text):
+            return "uk" if any(char in "іїєґІЇЄҐ" for char in text) else "ru"
+        if any(char.isascii() and char.isalpha() for char in text):
+            return "en"
+        return "auto"
 
     def _semantic_group(self, fragments: list[FactFragment]) -> list[dict]:
         """Group fact fragments by embedding similarity instead of exact text."""
