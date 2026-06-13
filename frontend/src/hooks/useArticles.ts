@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { fetchEventArticles } from "../services/api";
 import type { Article } from "../types/article";
 
-export function useArticles(eventId?: string) {
+export function useArticles(eventId?: string, refreshKey = 0) {
   const [articles, setArticles] = useState<Article[]>([]);
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export function useArticles(eventId?: string) {
     return () => {
       active = false;
     };
-  }, [eventId]);
+  }, [eventId, refreshKey]);
 
   return articles;
 }

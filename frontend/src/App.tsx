@@ -27,20 +27,29 @@ export default function App() {
   const [focusedArticleId, setFocusedArticleId] = useState<string | undefined>();
   const [highlightedFact, setHighlightedFact] = useState<string | undefined>();
   const [analysisRefreshKey, setAnalysisRefreshKey] = useState(0);
+  const [articleRefreshKey, setArticleRefreshKey] = useState(0);
   const { events, selected, setSelected } = useEvent({
     region: regionFilter || undefined,
     category: categoryFilter || undefined,
     sort,
   });
-  const articles = useArticles(selected?.id);
+  const articles = useArticles(selected?.id, articleRefreshKey);
   const analysis = useAnalysis(selected?.id, analysisRefreshKey);
   const taskOverview = useTaskProgress();
   const live = useEventSocket(selected?.id);
 
   useEffect(() => {
-    if (!selected?.id || live.message?.type !== "analysis_updated") return;
+    if (!selected?.id || !live.message?.type) return;
     if (live.message.event_id && live.message.event_id !== selected.id) return;
-    setAnalysisRefreshKey((value) => value + 1);
+    if (live.message.type === "analysis_updated") {
+      setAnalysisRefreshKey((value) => value + 1);
+    }
+    if (live.message.type === "articles_collected" || live.message.type === "backfill_complete") {
+      setArticleRefreshKey((value) => value + 1);
+    }
+    if (live.message.type === "backfill_complete") {
+      setAnalysisRefreshKey((value) => value + 1);
+    }
   }, [live.message, selected?.id]);
 
   const filteredEvents = useMemo(

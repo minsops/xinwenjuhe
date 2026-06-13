@@ -176,6 +176,117 @@ test("refreshes analysis after a live analysis update", async ({ page }) => {
   expect(analysisCalls).toBeGreaterThanOrEqual(2);
 });
 
+test("refreshes reports after a live collection update", async ({ page }) => {
+  await page.addInitScript(() => {
+    const sockets: Array<{ onmessage?: (event: { data: string }) => void; onopen?: (event: Event) => void }> = [];
+    (window as unknown as { __mockCollectionSockets: typeof sockets }).__mockCollectionSockets = sockets;
+    (window as unknown as { __sendArticlesCollected: () => void }).__sendArticlesCollected = () => {
+      for (const socket of sockets) {
+        socket.onmessage?.({ data: JSON.stringify({ type: "articles_collected", event_id: "evt-2" }) });
+      }
+    };
+    class MockWebSocket {
+      onclose?: (event: Event) => void;
+      onerror?: (event: Event) => void;
+      onmessage?: (event: { data: string }) => void;
+      onopen?: (event: Event) => void;
+      readyState = 0;
+      url: string;
+
+      constructor(url: string) {
+        this.url = url;
+        sockets.push(this);
+        window.setTimeout(() => {
+          this.readyState = 1;
+          this.onopen?.(new Event("open"));
+        }, 0);
+      }
+
+      close() {
+        this.readyState = 3;
+        this.onclose?.(new Event("close"));
+      }
+
+      send() {}
+    }
+    (window as unknown as { WebSocket: typeof MockWebSocket }).WebSocket = MockWebSocket;
+  });
+  let articleCalls = 0;
+  await page.route("**/api/v1/**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === "/api/v1/events") {
+      return route.fulfill({
+        json: {
+          data: [{
+            id: "evt-2",
+            title: "采集测试事件",
+            summary: "用于验证采集更新。",
+            category: "politics",
+            region_primary: "europe",
+            status: "active",
+            article_count: 1,
+            source_count: 1,
+            language_count: 1,
+            region_count: 1,
+            heat_score: 40,
+            last_updated_at: new Date().toISOString(),
+          }],
+        },
+      });
+    }
+    if (url.pathname === "/api/v1/events/evt-2/articles") {
+      articleCalls += 1;
+      return route.fulfill({
+        json: {
+          data: articleCalls === 1 ? [] : [{
+            id: "article-1",
+            source_id: "reuters",
+            external_url: "https://example.test/article-1",
+            title_original: "Collected report appears after live update",
+            title_translated: "实时更新后出现的新报道",
+            content_original: "A newly collected report has enough body text for the article panel.",
+            content_translated: "这是一篇实时采集后出现的新报道，正文已经进入文章面板。",
+            language: "en",
+            published_at: new Date().toISOString(),
+            source: { id: "reuters", name: "Reuters", country: "United Kingdom", region: "europe", language: "en", composite_credibility: 86 },
+          }],
+        },
+      });
+    }
+    if (url.pathname === "/api/v1/events/evt-2/analysis") {
+      return route.fulfill({
+        json: {
+          data: {
+            event_id: "evt-2",
+            summary: "采集更新测试分析",
+            analysis_version: 1,
+            article_count_at_analysis: 0,
+            consensus_facts: [],
+            disputed_facts: [],
+            blind_spots: [],
+            narrative_frames: [],
+            source_graph: { nodes: [], edges: [] },
+            timeline: [],
+          },
+        },
+      });
+    }
+    if (url.pathname === "/api/v1/tasks") {
+      return route.fulfill({ json: { data: { history: [], queue_depth: null } } });
+    }
+    return route.abort();
+  });
+
+  await page.goto("/");
+
+  await expect(page.getByText("这个事件暂时没有关联报道")).toBeVisible();
+  await page.waitForFunction(() => (window as unknown as { __mockCollectionSockets?: unknown[] }).__mockCollectionSockets?.length);
+  await page.evaluate(() => (window as unknown as { __sendArticlesCollected: () => void }).__sendArticlesCollected());
+  await expect(page.getByText("实时更新 · 新报道已采集")).toBeVisible();
+  await expect(page.getByText("实时更新后出现的新报道")).toBeVisible();
+  expect(articleCalls).toBeGreaterThanOrEqual(2);
+});
+
 test("exposes event selection and filters on mobile", async ({ page }) => {
   await useDemoData(page);
   await page.setViewportSize({ width: 390, height: 844 });
