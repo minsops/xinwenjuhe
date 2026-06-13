@@ -2,6 +2,7 @@ import { ExternalLink } from "lucide-react";
 import type { Article } from "../../types/article";
 import { formatDate } from "../../utils/formatDate";
 import { formatCountry, formatLanguage, formatRegion, formatSourceName, getUiText } from "../../utils/i18n";
+import { usableChineseText } from "../../utils/chineseText";
 import { CredibilityBadge } from "./CredibilityBadge";
 import { TranslateButton } from "./TranslateButton";
 
@@ -25,11 +26,13 @@ export function ArticleView({ article, showingChinese, loadingTranslation, trans
   if (!article) {
     return <div className="p-6 text-sm text-stone-500">{text.noArticle}</div>;
   }
+  const savedChineseTitle = usableChineseText(article.title_translated);
+  const savedChineseContent = usableChineseText(article.content_translated);
   const title = showingChinese
-    ? translatedTitle ?? article.title_translated ?? (loadingTranslation ? "正在翻译标题..." : article.title_original)
+    ? translatedTitle ?? savedChineseTitle ?? (loadingTranslation ? "正在翻译标题..." : "这篇报道暂时没有可用的中文标题")
     : article.title_original;
   const content = showingChinese
-    ? translatedContent ?? article.content_translated ?? (loadingTranslation ? "正在翻译正文..." : article.content_original)
+    ? translatedContent ?? savedChineseContent ?? (loadingTranslation ? "正在翻译正文..." : "自动翻译服务暂不可用，系统没有拿到可用的中文正文。你可以点击“显示原文”查看来源原文，原文语言已在文章信息中标注。")
     : article.content_original;
   const source = article.source;
   const isShortContent = article.content_original.trim().length < 180;

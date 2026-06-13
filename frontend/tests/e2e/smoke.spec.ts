@@ -71,6 +71,82 @@ test("links a consensus fact to the source article", async ({ page }) => {
   }
 });
 
+test("does not show stale english translation cache as Chinese", async ({ page }) => {
+  await page.route("**/api/v1/**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === "/api/v1/events") {
+      return route.fulfill({
+        json: {
+          data: [{
+            id: "evt-stale-translation",
+            title: "旧翻译缓存测试事件",
+            summary: "用于确认英文缓存不会冒充中文。",
+            category: "politics",
+            region_primary: "europe",
+            status: "active",
+            article_count: 1,
+            source_count: 1,
+            language_count: 1,
+            region_count: 1,
+            heat_score: 35,
+            last_updated_at: new Date().toISOString(),
+          }],
+        },
+      });
+    }
+    if (url.pathname === "/api/v1/events/evt-stale-translation/articles") {
+      return route.fulfill({
+        json: {
+          data: [{
+            id: "article-stale",
+            source_id: "reuters",
+            external_url: "https://example.test/stale",
+            title_original: "Original English title",
+            title_translated: "Old cached English title",
+            content_original: "Original English article body with enough text to be a normal report. It should only appear after the user chooses the original view.",
+            content_translated: "Old cached English body that must not appear inside the Chinese translation view.",
+            language: "en",
+            published_at: new Date().toISOString(),
+            source: { id: "reuters", name: "Reuters", country: "United Kingdom", region: "europe", language: "en", composite_credibility: 86 },
+          }],
+        },
+      });
+    }
+    if (url.pathname === "/api/v1/articles/article-stale/translate") {
+      return route.fulfill({ status: 503, json: { detail: "translation unavailable" } });
+    }
+    if (url.pathname === "/api/v1/events/evt-stale-translation/analysis") {
+      return route.fulfill({
+        json: {
+          data: {
+            event_id: "evt-stale-translation",
+            summary: "中文分析摘要",
+            analysis_version: 1,
+            article_count_at_analysis: 1,
+            consensus_facts: [],
+            disputed_facts: [],
+            blind_spots: [],
+            narrative_frames: [],
+            source_graph: { nodes: [], edges: [] },
+            timeline: [],
+          },
+        },
+      });
+    }
+    if (url.pathname === "/api/v1/tasks") {
+      return route.fulfill({ json: { data: { history: [], queue_depth: null } } });
+    }
+    return route.abort();
+  });
+
+  await page.goto("/");
+
+  await expect(page.getByText("自动翻译暂不可用：当前显示中文说明，可点击“显示原文”查看来源原文。")).toBeVisible();
+  await expect(page.getByText("这篇报道暂时没有可用的中文标题")).toBeVisible();
+  await expect(page.getByText("Old cached English title")).toHaveCount(0);
+  await expect(page.getByText("Old cached English body that must not appear inside the Chinese translation view.")).toHaveCount(0);
+});
+
 test("queues the event pipeline from the reanalyze button", async ({ page }) => {
   await useDemoData(page);
   let queued = false;

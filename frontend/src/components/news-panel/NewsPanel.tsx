@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Article } from "../../types/article";
 import { startArticleFulltextBackfill, translateArticle } from "../../services/api";
+import { usableChineseText } from "../../utils/chineseText";
 import { getUiText } from "../../utils/i18n";
 import { ArticleView } from "./ArticleView";
 import { SourceTabs } from "./SourceTabs";
@@ -76,8 +77,9 @@ export function NewsPanel({ articles, hasSelectedEvent = true, selectedArticleId
     } catch {
       const fallback = fallbackChineseArticle(article);
       setTranslatedByArticle((current) => ({ ...current, [article.id]: fallback }));
+      const hasSavedChinese = Boolean(usableChineseText(article.title_translated) || usableChineseText(article.content_translated));
       setTranslationError(
-        article.title_translated || article.content_translated
+        hasSavedChinese
           ? "自动翻译接口暂不可用：当前显示已保存的中文译文，可点击“显示原文”查看来源原文。"
           : "自动翻译暂不可用：当前显示中文说明，可点击“显示原文”查看来源原文。"
       );
@@ -149,8 +151,8 @@ function isChineseLanguage(language?: string | null): boolean {
 
 function fallbackChineseArticle(article: Article): { title: string; content: string } {
   return {
-    title: article.title_translated?.trim() || "这篇报道暂时没有可用的中文标题",
-    content: article.content_translated?.trim() || "自动翻译服务暂不可用，系统没有拿到可用的中文正文。你可以点击“显示原文”查看来源原文，原文语言已在文章信息中标注。",
+    title: usableChineseText(article.title_translated) || "这篇报道暂时没有可用的中文标题",
+    content: usableChineseText(article.content_translated) || "自动翻译服务暂不可用，系统没有拿到可用的中文正文。你可以点击“显示原文”查看来源原文，原文语言已在文章信息中标注。",
   };
 }
 
