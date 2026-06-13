@@ -49,20 +49,6 @@ def deduplicate_articles(self, payload: dict) -> dict:
     return asyncio.run(_deduplicate_articles(self.request.id, payload))
 
 
-@celery.task(bind=True, name="app.tasks.analyze_task.merge_group_results")
-def merge_group_results(self, results: list) -> dict:
-    """Merge Celery group result lists into one standard payload dict."""
-    merged: dict = {}
-    for result in results:
-        if isinstance(result, dict):
-            merged.update(result)
-        elif isinstance(result, list):
-            for item in result:
-                if isinstance(item, dict):
-                    merged.update(item)
-    return merged
-
-
 @celery.task(
     bind=True,
     name="app.tasks.analyze_task.extract_facts",
@@ -152,13 +138,9 @@ def process_event_pipeline(event_id: str) -> str:
 
 
 def _event_id_from_payload(payload: dict | list) -> str:
-    """Recover event id from normal or Celery group payloads."""
+    """Recover event id from the standard pipeline payload."""
     if isinstance(payload, dict):
         return str(payload.get("event_id", ""))
-    if isinstance(payload, list):
-        for item in payload:
-            if isinstance(item, dict) and item.get("event_id"):
-                return str(item["event_id"])
     return ""
 
 

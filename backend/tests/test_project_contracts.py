@@ -311,7 +311,7 @@ class ProjectContractsTest(unittest.TestCase):
         translator = (BACKEND_ROOT / "app/services/processor/translator.py").read_text(encoding="utf-8")
         readme_path = ROOT / "README.md"
         sources = (ROOT / "data/seed/sources.json").read_text(encoding="utf-8")
-        self.assertIn("merge_group_results", analyze_task)
+        self.assertNotIn("merge_group_results", analyze_task)
         self.assertIn("deduplicate_articles.s()", analyze_task)
         self.assertIn("_group_by_topic_semantic", detector)
         self.assertIn("EventClusterer.cosine", detector)
