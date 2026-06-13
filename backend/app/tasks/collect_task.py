@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.api.v1.websocket import publish_event_update
 from app.config import settings
 from app.models.article import Article
 from app.models.event import Event
@@ -183,6 +184,7 @@ async def _backfill_short_article_fulltext(task_id: str, limit: int) -> dict:
         "events_touched": len(affected_event_ids),
         "pipelines_triggered": triggered,
     }
+    await _publish_backfill_complete(affected_event_ids, result)
     set_progress(task_id, status="complete", step="backfill_short_article_fulltext", result=result)
     return result
 
@@ -208,6 +210,7 @@ async def _backfill_article_fulltext(task_id: str, article_id: UUID) -> dict:
         "events_touched": len(affected_event_ids),
         "pipelines_triggered": triggered,
     }
+    await _publish_backfill_complete(affected_event_ids, result)
     set_progress(task_id, status="complete", step="backfill_article_fulltext", result=result)
     return result
 
@@ -266,3 +269,8 @@ def _trigger_reanalysis(event_ids: set[UUID]) -> int:
         except Exception:
             continue
     return triggered
+
+
+async def _publish_backfill_complete(event_ids: set[UUID], result: dict) -> None:
+    for event_id in event_ids:
+        await publish_event_update({"event_id": str(event_id), "type": "backfill_complete", "payload": result})
