@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Article } from "../../types/article";
-import { translateArticle } from "../../services/api";
+import { startArticleFulltextBackfill, translateArticle } from "../../services/api";
+import { getUiText } from "../../utils/i18n";
 import { Skeleton } from "../shared/Skeleton";
 import { ArticleView } from "./ArticleView";
 import { SourceTabs } from "./SourceTabs";
@@ -13,10 +14,13 @@ type Props = {
 };
 
 export function NewsPanel({ articles, selectedArticleId, highlightedFact, onArticleSelect }: Props) {
+  const text = getUiText();
   const [selectedId, setSelectedId] = useState<string | undefined>(articles[0]?.id);
   const [showingChinese, setShowingChinese] = useState(true);
   const [loading, setLoading] = useState(false);
   const [translationError, setTranslationError] = useState<string | undefined>();
+  const [backfillLoading, setBackfillLoading] = useState(false);
+  const [backfillNotice, setBackfillNotice] = useState<string | undefined>();
   const [translatedByArticle, setTranslatedByArticle] = useState<Record<string, { title: string; content: string }>>({});
 
   const selected = useMemo(() => articles.find((article) => article.id === selectedId) ?? articles[0], [articles, selectedId]);
@@ -27,6 +31,7 @@ export function NewsPanel({ articles, selectedArticleId, highlightedFact, onArti
       setSelectedId(selectedArticleId);
       setShowingChinese(true);
       setTranslationError(undefined);
+      setBackfillNotice(undefined);
     } else if (!selectedId && articles[0]) {
       setSelectedId(articles[0].id);
     }
@@ -68,10 +73,24 @@ export function NewsPanel({ articles, selectedArticleId, highlightedFact, onArti
     if (!translatedByArticle[selected.id]) await loadChinese(selected);
   }
 
+  async function handleBackfillFulltext() {
+    if (!selected || backfillLoading) return;
+    setBackfillLoading(true);
+    setBackfillNotice(undefined);
+    try {
+      await startArticleFulltextBackfill(selected.id);
+      setBackfillNotice(text.backfillArticleQueued);
+    } catch {
+      setBackfillNotice(text.backfillArticleFailed);
+    } finally {
+      setBackfillLoading(false);
+    }
+  }
+
   return (
     <div className="soft-scrollbar h-full overflow-y-auto bg-white dark:bg-stone-950">
       {articles.length ? (
-        <SourceTabs articles={articles} selectedId={selected?.id} onSelect={(id) => { setSelectedId(id); setShowingChinese(true); setTranslationError(undefined); onArticleSelect?.(id); }} />
+        <SourceTabs articles={articles} selectedId={selected?.id} onSelect={(id) => { setSelectedId(id); setShowingChinese(true); setTranslationError(undefined); setBackfillNotice(undefined); onArticleSelect?.(id); }} />
       ) : null}
       {!articles.length ? <div className="p-5"><Skeleton lines={8} /></div> : null}
       <ArticleView
@@ -81,9 +100,12 @@ export function NewsPanel({ articles, selectedArticleId, highlightedFact, onArti
         translatedTitle={translatedText?.title}
         translatedContent={translatedText?.content}
         translationError={translationError}
+        backfillNotice={backfillNotice}
+        backfillLoading={backfillLoading}
         highlightedFact={highlightedFact}
         onShowChinese={handleShowChinese}
         onShowOriginal={() => { setShowingChinese(false); setTranslationError(undefined); }}
+        onBackfillFulltext={handleBackfillFulltext}
       />
     </div>
   );

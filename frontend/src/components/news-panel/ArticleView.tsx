@@ -12,12 +12,15 @@ type Props = {
   translatedTitle?: string;
   translatedContent?: string;
   translationError?: string;
+  backfillNotice?: string;
+  backfillLoading?: boolean;
   highlightedFact?: string;
   onShowChinese: () => void;
   onShowOriginal: () => void;
+  onBackfillFulltext?: () => void;
 };
 
-export function ArticleView({ article, showingChinese, loadingTranslation, translatedTitle, translatedContent, translationError, highlightedFact, onShowChinese, onShowOriginal }: Props) {
+export function ArticleView({ article, showingChinese, loadingTranslation, translatedTitle, translatedContent, translationError, backfillNotice, backfillLoading, highlightedFact, onShowChinese, onShowOriginal, onBackfillFulltext }: Props) {
   const text = getUiText();
   if (!article) {
     return <div className="p-6 text-sm text-stone-500">{text.noArticle}</div>;
@@ -72,7 +75,20 @@ export function ArticleView({ article, showingChinese, loadingTranslation, trans
       </div>
       {isShortContent ? (
         <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
-          {text.shortContentNotice}
+          <div>{text.shortContentNotice}</div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {onBackfillFulltext ? (
+              <button
+                className="focus-ring rounded border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:border-amber-500 disabled:cursor-wait disabled:opacity-70 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+                disabled={backfillLoading}
+                onClick={onBackfillFulltext}
+                type="button"
+              >
+                {backfillLoading ? text.submittingTask : text.backfillThisArticle}
+              </button>
+            ) : null}
+            {backfillNotice ? <span className="text-xs leading-5 text-amber-900 dark:text-amber-100">{backfillNotice}</span> : null}
+          </div>
         </div>
       ) : null}
       {translationError ? (

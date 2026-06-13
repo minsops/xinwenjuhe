@@ -6,6 +6,7 @@ import asyncio
 from uuid import UUID
 
 from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
@@ -85,6 +86,16 @@ def backfill_short_article_fulltext(self, limit: int = 50) -> dict:
     return asyncio.run(_backfill_short_article_fulltext(self.request.id, limit))
 
 
+@celery.task(
+    bind=True,
+    name="app.tasks.collect_task.backfill_article_fulltext",
+    autoretry_for=(),
+)
+def backfill_article_fulltext(self, article_id: str) -> dict:
+    """Refetch full text for one persisted article."""
+    return asyncio.run(_backfill_article_fulltext(self.request.id, UUID(article_id)))
+
+
 async def _collect_active_sources(task_id: str, limit: int | None) -> dict:
     set_progress(task_id, status="running", step="collect_active_sources")
     async with worker_session() as db:
@@ -152,11 +163,6 @@ async def _collect_single_source(task_id: str, source_id: UUID) -> dict:
 
 async def _backfill_short_article_fulltext(task_id: str, limit: int) -> dict:
     set_progress(task_id, status="running", step="backfill_short_article_fulltext", limit=limit)
-    fetcher = RSSCollector()
-    updated = 0
-    attempted = 0
-    failed = 0
-    affected_event_ids: set[UUID] = set()
     async with worker_session() as db:
         articles = (
             await db.execute(
@@ -167,39 +173,76 @@ async def _backfill_short_article_fulltext(task_id: str, limit: int) -> dict:
                 .limit(limit)
             )
         ).scalars().all()
-        indexer = ExternalSearchClient()
-        for article in articles:
-            attempted += 1
-            try:
-                content = await fetcher.fetch_full_content(article.external_url)
-            except Exception:
-                failed += 1
-                continue
-            if not _is_better_fulltext(article.content_original, content):
-                continue
-            article.content_original = content.strip()
-            article.content_translated = None
-            metadata = dict(article.article_metadata or {})
-            metadata["fulltext_backfilled"] = True
-            metadata["fulltext_backfill_task_id"] = task_id
-            article.article_metadata = metadata
-            updated += 1
-            if article.event_id:
-                affected_event_ids.add(article.event_id)
-            await indexer.index_article(article, article.source)
+        stats, affected_event_ids = await _backfill_article_rows(db, articles, task_id)
         await db.commit()
 
     triggered = _trigger_reanalysis(affected_event_ids)
     result = {
         "status": "ok",
-        "attempted": attempted,
-        "updated": updated,
-        "failed": failed,
+        **stats,
         "events_touched": len(affected_event_ids),
         "pipelines_triggered": triggered,
     }
     set_progress(task_id, status="complete", step="backfill_short_article_fulltext", result=result)
     return result
+
+
+async def _backfill_article_fulltext(task_id: str, article_id: UUID) -> dict:
+    set_progress(task_id, status="running", step="backfill_article_fulltext", article_id=str(article_id))
+    async with worker_session() as db:
+        article = (
+            await db.execute(select(Article).options(selectinload(Article.source)).where(Article.id == article_id))
+        ).scalar_one_or_none()
+        if not article:
+            result = {"status": "missing_article", "article_id": str(article_id)}
+            set_progress(task_id, status="complete", step="backfill_article_fulltext", result=result)
+            return result
+        stats, affected_event_ids = await _backfill_article_rows(db, [article], task_id)
+        await db.commit()
+
+    triggered = _trigger_reanalysis(affected_event_ids)
+    result = {
+        "status": "ok",
+        "article_id": str(article_id),
+        **stats,
+        "events_touched": len(affected_event_ids),
+        "pipelines_triggered": triggered,
+    }
+    set_progress(task_id, status="complete", step="backfill_article_fulltext", result=result)
+    return result
+
+
+async def _backfill_article_rows(
+    db: AsyncSession,
+    articles: list[Article],
+    task_id: str,
+) -> tuple[dict[str, int], set[UUID]]:
+    fetcher = RSSCollector()
+    indexer = ExternalSearchClient()
+    updated = 0
+    attempted = 0
+    failed = 0
+    affected_event_ids: set[UUID] = set()
+    for article in articles:
+        attempted += 1
+        try:
+            content = await fetcher.fetch_full_content(article.external_url)
+        except Exception:
+            failed += 1
+            continue
+        if not _is_better_fulltext(article.content_original, content):
+            continue
+        article.content_original = content.strip()
+        article.content_translated = None
+        metadata = dict(article.article_metadata or {})
+        metadata["fulltext_backfilled"] = True
+        metadata["fulltext_backfill_task_id"] = task_id
+        article.article_metadata = metadata
+        updated += 1
+        if article.event_id:
+            affected_event_ids.add(article.event_id)
+        await indexer.index_article(article, article.source)
+    return {"attempted": attempted, "updated": updated, "failed": failed}, affected_event_ids
 
 
 def _is_better_fulltext(existing: str | None, candidate: str | None) -> bool:

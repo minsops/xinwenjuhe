@@ -65,6 +65,11 @@ export async function translateArticle(articleId: string, targetLang: string): P
   return data.data;
 }
 
+export async function startArticleFulltextBackfill(articleId: string): Promise<{ task_id: string; status: string }> {
+  const { data } = await client.post<Envelope<{ task_id: string; status: string }>>(`/api/v1/articles/${articleId}/backfill-fulltext`);
+  return data.data;
+}
+
 export async function fetchTaskOverview(): Promise<TaskOverview> {
   const { data } = await client.get<Envelope<TaskOverview>>("/api/v1/tasks");
   return data.data;

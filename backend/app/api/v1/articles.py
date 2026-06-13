@@ -14,6 +14,7 @@ from app.db import get_db
 from app.models.article import Article
 from app.schemas.article import ArticleRead, TranslateRequest, TranslateResponse
 from app.services.processor.translator import TranslationError, TranslationService
+from app.tasks.collect_task import backfill_article_fulltext
 
 router = APIRouter()
 
@@ -49,6 +50,15 @@ async def get_article(article_id: UUID, db: AsyncSession = Depends(get_db)):
     if not article:
         raise ApiError("article_not_found", "Article not found", 404)
     return envelope(ArticleRead.model_validate(article).model_dump(mode="json"))
+
+
+@router.post("/{article_id}/backfill-fulltext")
+async def backfill_article(article_id: UUID, db: AsyncSession = Depends(get_db)):
+    article = await db.get(Article, article_id)
+    if not article:
+        raise ApiError("article_not_found", "Article not found", 404)
+    result = backfill_article_fulltext.delay(str(article_id))
+    return envelope({"task_id": result.id, "status": "queued", "task": "backfill_article_fulltext"})
 
 
 @router.post("/{article_id}/translate")
