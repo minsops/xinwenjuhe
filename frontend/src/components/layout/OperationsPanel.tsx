@@ -1,7 +1,7 @@
 import { Activity, ListChecks, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import type { TaskOverview } from "../../types/task";
-import { refreshSourceCredibility, startClusterNewArticles, startCollectActiveSources, startCollectHotEvents } from "../../services/api";
+import { refreshSourceCredibility, startBackfillShortArticles, startClusterNewArticles, startCollectActiveSources, startCollectHotEvents } from "../../services/api";
 import { formatDate } from "../../utils/formatDate";
 import { getUiText } from "../../utils/i18n";
 import { Badge } from "../shared/Badge";
@@ -35,6 +35,12 @@ export function OperationsPanel({ overview }: Props) {
       label: text.collectHotEvents,
       description: text.collectHotEventsHelp,
       run: startCollectHotEvents,
+    },
+    {
+      key: "backfill-fulltext",
+      label: text.backfillFulltext,
+      description: text.backfillFulltextHelp,
+      run: startBackfillShortArticles,
     },
     {
       key: "credibility",
@@ -129,6 +135,7 @@ function formatTaskName(name?: string | null): string {
   const map: Record<string, string> = {
     collect_active_sources: "采集全部来源",
     collect_hot_events: "补采热门事件",
+    backfill_short_article_fulltext: "补全短正文",
     collect_single_source: "采集单个来源",
     cluster_new_articles: "聚类新文章",
     refresh_source_credibility: "刷新来源可信度",

@@ -85,6 +85,11 @@ export async function startCollectHotEvents(): Promise<{ task_id: string; status
   return data.data;
 }
 
+export async function startBackfillShortArticles(): Promise<{ task_id: string; status: string }> {
+  const { data } = await client.post<Envelope<{ task_id: string; status: string }>>("/api/v1/tasks/backfill-short-articles");
+  return data.data;
+}
+
 export async function startClusterNewArticles(): Promise<{ task_id: string; status: string }> {
   const { data } = await client.post<Envelope<{ task_id: string; status: string }>>("/api/v1/tasks/cluster-new-articles");
   return data.data;

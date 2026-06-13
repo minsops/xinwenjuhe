@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from app.core.errors import ApiError, envelope
 from app.services.collector.quality import list_collection_metrics as list_recent_collection_metrics
 from app.tasks.cluster_task import cluster_new_articles
-from app.tasks.collect_task import collect_active_sources, collect_hot_events
+from app.tasks.collect_task import backfill_short_article_fulltext, collect_active_sources, collect_hot_events
 from app.tasks.credibility_task import refresh_source_credibility
 from app.tasks.progress import get_progress, list_dead_letters, list_progress, list_source_alerts, queue_depth
 from app.tasks.trending_task import discover_and_seed_events
@@ -67,6 +67,12 @@ async def start_collect_active_sources(limit: int | None = None):
 async def start_collect_hot_events(limit: int = 10):
     result = collect_hot_events.delay(limit)
     return envelope({"task_id": result.id, "status": "queued", "task": "collect_hot_events"})
+
+
+@router.post("/backfill-short-articles")
+async def start_backfill_short_articles(limit: int = 50):
+    result = backfill_short_article_fulltext.delay(limit)
+    return envelope({"task_id": result.id, "status": "queued", "task": "backfill_short_article_fulltext"})
 
 
 @router.post("/discover-trending")

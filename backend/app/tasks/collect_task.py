@@ -5,15 +5,22 @@ from __future__ import annotations
 import asyncio
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 
 from app.config import settings
+from app.models.article import Article
 from app.models.event import Event
 from app.models.source import Source
 from app.services.collector.ingestion import ArticleIngestionService
+from app.services.collector.rss_collector import RSSCollector
+from app.services.search import ExternalSearchClient
 from app.tasks.celery_app import celery
 from app.tasks.progress import set_progress
 from app.tasks.worker_db import worker_session
+
+
+MIN_BACKFILL_FULLTEXT_LENGTH = 200
 
 
 @celery.task(
@@ -66,6 +73,16 @@ def collect_articles_for_event(self, event_id: str) -> dict:
 def collect_single_source(self, source_id: str) -> dict:
     """Collect one source by id."""
     return asyncio.run(_collect_single_source(self.request.id, UUID(source_id)))
+
+
+@celery.task(
+    bind=True,
+    name="app.tasks.collect_task.backfill_short_article_fulltext",
+    autoretry_for=(),
+)
+def backfill_short_article_fulltext(self, limit: int = 50) -> dict:
+    """Refetch full text for already persisted articles that only have short summaries."""
+    return asyncio.run(_backfill_short_article_fulltext(self.request.id, limit))
 
 
 async def _collect_active_sources(task_id: str, limit: int | None) -> dict:
@@ -131,3 +148,78 @@ async def _collect_single_source(task_id: str, source_id: UUID) -> dict:
             result = await ArticleIngestionService(db).collect_source(source)
     set_progress(task_id, status="complete", step="collect_single_source", result=result)
     return result
+
+
+async def _backfill_short_article_fulltext(task_id: str, limit: int) -> dict:
+    set_progress(task_id, status="running", step="backfill_short_article_fulltext", limit=limit)
+    fetcher = RSSCollector()
+    updated = 0
+    attempted = 0
+    failed = 0
+    affected_event_ids: set[UUID] = set()
+    async with worker_session() as db:
+        articles = (
+            await db.execute(
+                select(Article)
+                .options(selectinload(Article.source))
+                .where(func.length(Article.content_original) < MIN_BACKFILL_FULLTEXT_LENGTH)
+                .order_by(Article.published_at.desc().nullslast(), Article.created_at.desc())
+                .limit(limit)
+            )
+        ).scalars().all()
+        indexer = ExternalSearchClient()
+        for article in articles:
+            attempted += 1
+            try:
+                content = await fetcher.fetch_full_content(article.external_url)
+            except Exception:
+                failed += 1
+                continue
+            if not _is_better_fulltext(article.content_original, content):
+                continue
+            article.content_original = content.strip()
+            article.content_translated = None
+            metadata = dict(article.article_metadata or {})
+            metadata["fulltext_backfilled"] = True
+            metadata["fulltext_backfill_task_id"] = task_id
+            article.article_metadata = metadata
+            updated += 1
+            if article.event_id:
+                affected_event_ids.add(article.event_id)
+            await indexer.index_article(article, article.source)
+        await db.commit()
+
+    triggered = _trigger_reanalysis(affected_event_ids)
+    result = {
+        "status": "ok",
+        "attempted": attempted,
+        "updated": updated,
+        "failed": failed,
+        "events_touched": len(affected_event_ids),
+        "pipelines_triggered": triggered,
+    }
+    set_progress(task_id, status="complete", step="backfill_short_article_fulltext", result=result)
+    return result
+
+
+def _is_better_fulltext(existing: str | None, candidate: str | None) -> bool:
+    current = (existing or "").strip()
+    proposed = (candidate or "").strip()
+    return len(proposed) >= MIN_BACKFILL_FULLTEXT_LENGTH and len(proposed) > len(current)
+
+
+def _trigger_reanalysis(event_ids: set[UUID]) -> int:
+    triggered = 0
+    if not event_ids:
+        return triggered
+    try:
+        from app.tasks.analyze_task import process_event_pipeline
+    except Exception:
+        return triggered
+    for event_id in event_ids:
+        try:
+            process_event_pipeline.delay(str(event_id))
+            triggered += 1
+        except Exception:
+            continue
+    return triggered

@@ -81,6 +81,8 @@ class ProjectContractsTest(unittest.TestCase):
         self.assertIn("_source_article_cursor", sources_api)
         self.assertIn("discover-trending", tasks_api)
         self.assertIn("collection-metrics", tasks_api)
+        self.assertIn("backfill-short-articles", tasks_api)
+        self.assertIn("backfill_short_article_fulltext", tasks_api)
         self.assertIn("discover-trending-events", celery_app)
         self.assertIn("app.tasks.trending_task", celery_app)
         self.assertIn("class ArchiveQuery", archive_service)

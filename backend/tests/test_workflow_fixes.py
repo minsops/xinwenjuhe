@@ -15,6 +15,7 @@ if not importlib.util.find_spec("sqlalchemy"):
 from app.models.article import Article
 from app.services.analyzer.event_analysis_service import EventAnalysisService
 from app.services.analyzer.fact_extractor import FactExtractor
+from app.tasks.collect_task import MIN_BACKFILL_FULLTEXT_LENGTH, _is_better_fulltext
 from app.tasks.worker_db import worker_session
 
 
@@ -64,6 +65,11 @@ class WorkflowFixesTest(unittest.TestCase):
         self.assertIn("Article.id.not_in(already_extracted)", extract_body)
         self.assertNotIn("delete(FactFragment).where(FactFragment.event_id", extract_body)
         self.assertNotIn("+ len(fragments)", extract_body)
+
+    def test_short_article_fulltext_backfill_only_accepts_longer_fulltext(self) -> None:
+        self.assertFalse(_is_better_fulltext("short summary", "still short"))
+        self.assertFalse(_is_better_fulltext("x" * MIN_BACKFILL_FULLTEXT_LENGTH, "y" * MIN_BACKFILL_FULLTEXT_LENGTH))
+        self.assertTrue(_is_better_fulltext("short summary", "full article body " * 20))
 
     def test_fallback_extracts_title_and_only_casualty_context_not_year(self) -> None:
         article = Article(
