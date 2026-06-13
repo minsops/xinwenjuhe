@@ -40,19 +40,34 @@ produces placeholder results.
 
 ### Option A: Ollama (recommended for local development)
 
-1. Install [Ollama](https://ollama.ai) and pull a model:
+Use the bundled Docker Compose profile if you want Ollama in the stack:
 
-   ```bash
-   ollama pull qwen2.5:7b
-   ```
+```bash
+docker-compose --profile ollama up --build
+docker exec truthpuzzle-ollama-1 ollama pull qwen2.5:7b
+```
 
-2. Set in `.env`:
+Set in `.env`:
 
-   ```env
-   LLM_PROVIDER=ollama
-   OLLAMA_BASE_URL=http://host.docker.internal:11434
-   OLLAMA_MODEL=qwen2.5:7b
-   ```
+```env
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://ollama:11434
+OLLAMA_MODEL=qwen2.5:7b
+```
+
+If you run Ollama on the host instead, install [Ollama](https://ollama.ai) and pull a model:
+
+```bash
+ollama pull qwen2.5:7b
+```
+
+Then point the backend to the host service:
+
+```env
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+OLLAMA_MODEL=qwen2.5:7b
+```
 
 ### Option B: OpenAI
 

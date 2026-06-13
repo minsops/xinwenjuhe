@@ -158,8 +158,8 @@ async def _translate_articles(task_id: str, payload: dict) -> dict:
         translator = TranslationService()
         translated = 0
         for article in articles:
-            article.title_translated = await translator.translate_article(article.title_original, article.language, "en")
-            article.content_translated = await translator.translate_article(article.content_original, article.language, "en")
+            article.title_translated = await translator.translate_article(article.title_original, article.language, "zh")
+            article.content_translated = await translator.translate_article(article.content_original, article.language, "zh")
             translated += 1
         await db.commit()
     set_progress(task_id, status="complete", step="translate_articles", translated=translated, event_id=event_id)

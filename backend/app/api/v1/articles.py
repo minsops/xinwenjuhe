@@ -42,6 +42,11 @@ def _translation_fallback_response(target_lang: str, error: TranslationError) ->
     )
 
 
+def _stores_article_translation(target_lang: str) -> bool:
+    """Return true when the translation fields should cache the Chinese UI text."""
+    return target_lang.lower().split("-")[0] == "zh"
+
+
 @router.get("/{article_id}")
 async def get_article(article_id: UUID, db: AsyncSession = Depends(get_db)):
     article = (
@@ -85,7 +90,7 @@ async def translate_article(article_id: UUID, payload: TranslateRequest, db: Asy
     except TranslationError as exc:
         response = _translation_fallback_response(payload.target_lang, exc)
         return envelope(response.model_dump())
-    if payload.target_lang == "en":
+    if _stores_article_translation(payload.target_lang):
         article.title_translated = title
         article.content_translated = content
         await db.commit()

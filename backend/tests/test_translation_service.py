@@ -5,17 +5,22 @@ from __future__ import annotations
 from importlib.util import find_spec
 import unittest
 
-if not find_spec("redis"):
-    raise unittest.SkipTest("backend runtime dependencies are not installed")
+if find_spec("redis"):
+    from app.services.processor.translator import (
+        TRANSLATION_CACHE_VERSION,
+        TranslationError,
+        TranslationService,
+    )
+    from app.api.v1.articles import _stores_article_translation, _translation_fallback_response
+else:
+    TRANSLATION_CACHE_VERSION = "missing"
+    TranslationError = RuntimeError
+    TranslationService = None
+    _stores_article_translation = None
+    _translation_fallback_response = None
 
-from app.services.processor.translator import (
-    TRANSLATION_CACHE_VERSION,
-    TranslationError,
-    TranslationService,
-)
-from app.api.v1.articles import _translation_fallback_response
 
-
+@unittest.skipUnless(TranslationService is not None, "backend runtime dependencies are not installed")
 class TranslationServiceTest(unittest.TestCase):
     """Validate documented article-target cache keys."""
 
@@ -45,6 +50,11 @@ class TranslationServiceTest(unittest.TestCase):
         self.assertFalse(response.cached)
         self.assertIn("自动翻译服务没有返回可用的中文译文", response.content)
         self.assertIn("翻译服务返回了原文", response.message or "")
+
+    def test_article_translation_fields_cache_chinese_ui_text(self) -> None:
+        self.assertTrue(_stores_article_translation("zh"))
+        self.assertTrue(_stores_article_translation("zh-CN"))
+        self.assertFalse(_stores_article_translation("en"))
 
 
 if __name__ == "__main__":

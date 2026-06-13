@@ -316,6 +316,7 @@ class ProjectContractsTest(unittest.TestCase):
 
     def test_fix_task_contracts_are_declared(self) -> None:
         analyze_task = (BACKEND_ROOT / "app/tasks/analyze_task.py").read_text(encoding="utf-8")
+        articles_api = (BACKEND_ROOT / "app/api/v1/articles.py").read_text(encoding="utf-8")
         detector = (BACKEND_ROOT / "app/services/analyzer/contradiction_detector.py").read_text(encoding="utf-8")
         translator = (BACKEND_ROOT / "app/services/processor/translator.py").read_text(encoding="utf-8")
         readme_path = ROOT / "README.md"
@@ -326,6 +327,9 @@ class ProjectContractsTest(unittest.TestCase):
         self.assertIn("EventClusterer.cosine", detector)
         self.assertIn("TRANSLATION_CACHE_VERSION", translator)
         self.assertIn("translate:{TRANSLATION_CACHE_VERSION}", translator)
+        self.assertIn("_stores_article_translation(payload.target_lang)", articles_api)
+        self.assertIn('translate_article(article.title_original, article.language, "zh")', analyze_task)
+        self.assertIn('translate_article(article.content_original, article.language, "zh")', analyze_task)
         if readme_path.exists():
             readme = readme_path.read_text(encoding="utf-8")
             self.assertIn("LLM Configuration", readme)
