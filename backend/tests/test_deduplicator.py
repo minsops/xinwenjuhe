@@ -23,6 +23,11 @@ class DeduplicatorTest(unittest.TestCase):
         deduplicator = Deduplicator()
         self.assertEqual(deduplicator.detect_wire_copy("By AP\nThe report follows..."), "AP")
         self.assertEqual(deduplicator.detect_wire_copy("Reuters - Officials said..."), "REUTERS")
+        self.assertEqual(deduplicator.detect_wire_copy("新华社北京6月13日电 消息人士称..."), "XINHUA")
+        self.assertEqual(deduplicator.detect_wire_copy("ТАСС: officials confirmed the meeting."), "TASS")
+        self.assertEqual(deduplicator.detect_wire_copy("共同社报道，相关部门正在调查。"), "KYODO")
+        self.assertEqual(deduplicator.detect_wire_copy("韩联社首尔消息，法院作出裁决。"), "YONHAP")
+        self.assertEqual(deduplicator.detect_wire_copy("연합뉴스 서울발 기사입니다."), "YONHAP")
         self.assertIsNone(deduplicator.detect_wire_copy("Local staff wrote this report."))
 
 
