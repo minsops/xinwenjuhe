@@ -175,12 +175,18 @@ class ProjectContractsTest(unittest.TestCase):
     def test_api_feed_type_is_collected_with_generic_json_mapper(self) -> None:
         collector = (BACKEND_ROOT / "app/services/collector/api_collector.py").read_text(encoding="utf-8")
         ingestion = (BACKEND_ROOT / "app/services/collector/ingestion.py").read_text(encoding="utf-8")
+        registry = (BACKEND_ROOT / "app/services/collector/registry.py").read_text(encoding="utf-8")
         self.assertIn("class APICollector", collector)
         self.assertIn("items_path", collector)
         self.assertIn("title_path", collector)
         self.assertIn("content_path", collector)
-        self.assertIn('source.feed_type == "api"', ingestion)
-        self.assertIn("self.api.fetch_feed(source)", ingestion)
+        self.assertIn("get_registry().get(source.feed_type)", ingestion)
+        self.assertNotIn('source.feed_type == "api"', ingestion)
+        self.assertIn("class SourceCollectorRegistry", registry)
+        self.assertIn('registry.register("rss"', registry)
+        self.assertIn('registry.register("api"', registry)
+        self.assertIn('registry.register("scraper"', registry)
+        self.assertIn("def supported_types", registry)
 
     def test_documented_test_and_browser_dependencies_are_declared(self) -> None:
         pyproject = (BACKEND_ROOT / "pyproject.toml").read_text(encoding="utf-8")

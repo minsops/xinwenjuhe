@@ -16,11 +16,9 @@ from app.models.discovered_source import DiscoveredSource
 from app.models.event import Event
 from app.models.source import Source
 from app.schemas.article import RawArticle
-from app.services.collector.api_collector import APICollector
 from app.services.collector.google_news import GoogleNewsCollector
 from app.services.collector.quality import build_collection_metrics, record_collection_metrics
-from app.services.collector.rss_collector import RSSCollector
-from app.services.collector.scraper import WebScraper
+from app.services.collector.registry import get_registry
 from app.services.collector.source_registry import update_collection_failure, update_collection_success
 from app.services.processor.normalizer import ArticleNormalizer
 from app.services.search import ExternalSearchClient
@@ -33,9 +31,6 @@ class ArticleIngestionService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.normalizer = ArticleNormalizer()
-        self.rss = RSSCollector()
-        self.api = APICollector()
-        self.scraper = WebScraper()
         self.google_news = GoogleNewsCollector()
 
     async def collect_source(self, source: Source, event_id: UUID | None = None) -> dict:
@@ -148,13 +143,10 @@ class ArticleIngestionService:
         }
 
     async def _fetch_source_articles(self, source: Source) -> list[RawArticle]:
-        if source.feed_type == "rss":
-            return await self.rss.fetch_feed(source)
-        if source.feed_type == "api":
-            return await self.api.fetch_feed(source)
-        if source.feed_type == "scraper":
-            return await self.scraper.scrape_source(source)
-        return []
+        collector = get_registry().get(source.feed_type)
+        if not collector:
+            return []
+        return await collector.collect(source)
 
     async def collect_google_news_for_event(self, event: Event) -> dict:
         """Search Google News language feeds for an event and persist results."""

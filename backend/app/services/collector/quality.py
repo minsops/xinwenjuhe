@@ -80,8 +80,8 @@ def build_collection_metrics(
     result = result or {}
     return CollectionMetrics(
         source_id=str(source.id),
-        source_name=source.name,
-        feed_type=source.feed_type,
+        source_name=getattr(source, "name", str(source.id)),
+        feed_type=getattr(source, "feed_type", "unknown"),
         articles_fetched=len(raw_articles),
         articles_with_fulltext=sum(1 for length in lengths if length >= 200),
         articles_empty_content=sum(1 for length in lengths if length == 0),
