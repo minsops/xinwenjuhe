@@ -22,6 +22,8 @@ test("renders TruthPuzzle dashboard", async ({ page }) => {
     await categoryFilter.selectOption("conflict");
   }
   await expect(page.getByRole("button", { name: /重新分析/ })).toBeVisible();
+  await expect(page.getByText("队列 未知")).toHaveCount(2);
+  await expect(page.getByText("队列 n/a")).toHaveCount(0);
   await expect(page.getByText(/v1 ·/)).toBeVisible();
   await expect(page.getByText(/共识区/)).toBeVisible();
   await expect(page.getByText("含 1 篇通讯社转载")).toBeVisible();

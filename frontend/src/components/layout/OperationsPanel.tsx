@@ -66,7 +66,7 @@ export function OperationsPanel({ overview }: Props) {
           {text.operationsTitle}
         </div>
         <Badge tone={overview.queue_depth && overview.queue_depth > 0 ? "yellow" : "green"}>
-          {text.queueDepth} {overview.queue_depth ?? "n/a"}
+          {text.queueDepth} {overview.queue_depth ?? "未知"}
         </Badge>
       </div>
       <div className="mb-3 text-xs leading-5 text-stone-500 dark:text-stone-400">{text.operationsSubtitle}</div>
@@ -92,7 +92,7 @@ export function OperationsPanel({ overview }: Props) {
           );
         })}
         {error ? <div className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">{error}</div> : null}
-        {lastTask ? <div className="truncate text-xs text-stone-500">{text.queuedTask} <span className="font-mono">{lastTask}</span></div> : null}
+        {lastTask ? <div className="text-xs text-stone-500">{text.queuedTask}，稍后可在最近任务中查看进度。</div> : null}
       </div>
       <div className="mb-2 text-xs font-medium text-stone-500 dark:text-stone-400">{text.recentTasks}</div>
       <div className="space-y-2">
@@ -105,7 +105,7 @@ export function OperationsPanel({ overview }: Props) {
               </span>
               <Badge tone={item.status === "complete" ? "green" : "blue"}>{formatTaskStatus(item.status)}</Badge>
             </div>
-            <div className="mt-1 truncate text-stone-500">{item.updated_at ? formatDate(item.updated_at) : item.task_id}</div>
+            <div className="mt-1 truncate text-stone-500">{item.updated_at ? formatDate(item.updated_at) : "更新时间未知"}</div>
           </div>
         )) : <div className="text-xs text-stone-500">{text.noRecentTasks}</div>}
       </div>
