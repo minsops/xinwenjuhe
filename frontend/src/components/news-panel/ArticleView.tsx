@@ -1,7 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import type { Article } from "../../types/article";
 import { formatDate } from "../../utils/formatDate";
-import { formatCountry, formatLanguage, formatRegion, getUiText } from "../../utils/i18n";
+import { formatCountry, formatLanguage, formatRegion, formatSourceName, getUiText } from "../../utils/i18n";
 import { CredibilityBadge } from "./CredibilityBadge";
 import { TranslateButton } from "./TranslateButton";
 
@@ -57,7 +57,7 @@ export function ArticleView({ article, showingChinese, loadingTranslation, trans
         <div className="mt-3 text-xs text-stone-500">{text.originalLanguage}：{formatLanguage(article.language || source?.language)}</div>
         <h2 className="mt-2 text-2xl font-black leading-tight tracking-tight text-stone-950 dark:text-white lg:text-3xl">{title}</h2>
         <div className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-          <MetaItem label={text.sourceAgency} value={source?.name_en && source.name_en !== source.name ? `${source.name} / ${source.name_en}` : source?.name ?? text.unknown} />
+          <MetaItem label={text.sourceAgency} value={formatSourceName(source?.name, source?.name_en)} />
           <MetaItem label={text.sourceCountry} value={formatCountry(source?.country)} />
           <MetaItem label={text.sourceRegion} value={formatRegion(source?.region)} />
           <MetaItem label={text.sourceLanguage} value={formatLanguage(article.language || source?.language)} />

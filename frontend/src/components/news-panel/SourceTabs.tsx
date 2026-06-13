@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Article } from "../../types/article";
-import { formatCountry, formatLanguage, formatRegion, getUiText } from "../../utils/i18n";
+import { formatCountry, formatLanguage, formatRegion, formatSourceName, getUiText } from "../../utils/i18n";
 import { CredibilityBadge } from "./CredibilityBadge";
 
 type Props = {
@@ -49,7 +49,7 @@ export function SourceTabs({ articles, selectedId, onSelect }: Props) {
         onClick={() => onSelect(article.id)}
       >
         <span className="min-w-0">
-          <span className="block truncate font-semibold">{article.source?.name ?? article.source_id.slice(0, 8)}</span>
+          <span className="block truncate font-semibold">{formatSourceName(article.source?.name, article.source?.name_en)}</span>
           <span className={`block truncate text-xs ${selected ? "text-cyan-50/85" : "text-stone-500 dark:text-stone-400"}`}>
             {formatCountry(article.source?.country)} / {formatRegion(article.source?.region)} / {text.originalLanguage}：{formatLanguage(article.language || article.source?.language)}
           </span>

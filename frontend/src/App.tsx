@@ -12,7 +12,7 @@ import { useArticles } from "./hooks/useArticles";
 import { useEventSocket } from "./hooks/useEventSocket";
 import { useEvent } from "./hooks/useEvent";
 import { useTaskProgress } from "./hooks/useTaskProgress";
-import { formatRegion, getUiText } from "./utils/i18n";
+import { formatRegion, formatSourceName, getUiText } from "./utils/i18n";
 
 const mobileSelectClass =
   "focus-ring h-11 min-w-0 rounded-xl border border-stone-200 bg-white px-3 text-sm text-stone-800 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-100";
@@ -47,9 +47,7 @@ export default function App() {
           .filter((article) => article.source)
           .map((article) => [
             article.source_id,
-            article.source?.name_en && article.source.name_en !== article.source.name
-              ? `${article.source.name} / ${article.source.name_en}`
-              : article.source?.name ?? article.source_id,
+            formatSourceName(article.source?.name, article.source?.name_en),
           ])
       ),
     [articles]

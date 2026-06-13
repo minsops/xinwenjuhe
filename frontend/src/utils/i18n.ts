@@ -241,6 +241,80 @@ const zhStatuses: Record<string, string> = {
   rejected: "已拒绝"
 };
 
+const zhSourceNames: Record<string, string> = {
+  "ada derana": "阿达德拉纳",
+  "al arabiya": "阿拉比亚电视台",
+  "al jazeera": "半岛电视台",
+  allafrica: "全非洲新闻网",
+  "anadolu agency": "阿纳多卢通讯社",
+  ansa: "安莎社",
+  "asahi shimbun": "朝日新闻",
+  "associated press": "美联社",
+  bbc: "英国广播公司",
+  "bbc news": "英国广播公司",
+  belta: "白通社",
+  "central news agency": "中央社",
+  "cbc news": "加拿大广播公司",
+  clarin: "号角报",
+  clarín: "号角报",
+  cnn: "美国有线电视新闻网",
+  dawn: "黎明报",
+  "daily nation": "民族日报",
+  "deutsche welle": "德国之声",
+  dw: "德国之声",
+  efe: "埃菲社",
+  "el pais america": "国家报美洲版",
+  "el país américa": "国家报美洲版",
+  "el universal": "环球报",
+  "el universal mexico": "墨西哥环球报",
+  "folha de s.paulo": "圣保罗页报",
+  "fox news": "福克斯新闻",
+  "france 24": "法国24",
+  "global times": "环球时报",
+  haaretz: "国土报",
+  "hindustan times": "印度斯坦时报",
+  interfax: "国际文传电讯社",
+  "islamic republic news agency": "伊朗伊斯兰共和国通讯社",
+  irna: "伊朗伊斯兰共和国通讯社",
+  kazinform: "哈通社",
+  "kathmandu post": "加德满都邮报",
+  "la nacion": "民族报",
+  "la nación": "民族报",
+  "le monde": "世界报",
+  "mail & guardian": "邮报与卫报",
+  ndtv: "新德里电视台",
+  news24: "News24南非新闻网",
+  nhk: "日本广播协会",
+  npr: "美国国家公共广播电台",
+  "o globo": "环球报",
+  "premium times": "优质时报",
+  "radio free europe radio liberty": "自由欧洲电台/自由电台",
+  reuters: "路透社",
+  "rfe/rl": "自由欧洲电台/自由电台",
+  rt: "今日俄罗斯",
+  tass: "塔斯社",
+  telesur: "南方电视台",
+  "the daily star": "每日星报",
+  "the daily star bangladesh": "孟加拉每日星报",
+  "the eastafrican": "东非人报",
+  "the guardian": "卫报",
+  "the guardian nigeria": "尼日利亚卫报",
+  "the hindu": "印度教徒报",
+  "the korea herald": "韩国先驱报",
+  "the national": "国民报",
+  "the new york times": "纽约时报",
+  "trt world": "土耳其广播电视台国际频道",
+  ukrinform: "乌克兰国家通讯社",
+  "xinhua news agency": "新华社",
+  "yonhap news agency": "韩联社",
+  半岛电视台: "半岛电视台",
+  朝日新闻: "朝日新闻",
+  环球时报: "环球时报",
+  韩联社: "韩联社",
+  新华社: "新华社",
+  中央社: "中央社"
+};
+
 function useChineseUi(): boolean {
   return true;
 }
@@ -266,6 +340,18 @@ export function formatStatus(status?: string | null): string {
   if (!status) return getUiText().unknown;
   const normalized = status.trim().toLowerCase().replace(/\s+/g, "_");
   return useChineseUi() ? zhStatuses[normalized] ?? status : status;
+}
+
+export function formatSourceName(name?: string | null, nameEn?: string | null): string {
+  const primary = name?.trim() || nameEn?.trim();
+  if (!primary) return getUiText().unknown;
+  if (!useChineseUi()) return nameEn?.trim() || primary;
+  const original = nameEn?.trim() || primary;
+  const translated = zhSourceNames[primary.toLowerCase()] ?? zhSourceNames[original.toLowerCase()];
+  if (!translated) {
+    return nameEn && nameEn !== name ? `${name} / ${nameEn}` : primary;
+  }
+  return translated === original || translated === primary ? translated : `${translated} / ${original}`;
 }
 
 const zhLanguages: Record<string, string> = {
