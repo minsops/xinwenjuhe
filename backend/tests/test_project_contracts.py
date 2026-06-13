@@ -303,6 +303,12 @@ class ProjectContractsTest(unittest.TestCase):
                 direct_sdk_hits.append(str(path))
         self.assertFalse(direct_sdk_hits, direct_sdk_hits)
 
+    def test_event_translation_persists_with_database_session(self) -> None:
+        events_api = (BACKEND_ROOT / "app/api/v1/events.py").read_text(encoding="utf-8")
+        self.assertIn("async def _persist_event_chinese(event: Event, db: AsyncSession", events_api)
+        self.assertEqual(events_api.count("_persist_event_chinese(event, db, title, summary)"), 2)
+        self.assertNotIn("_persist_event_chinese(event, title, summary)", events_api)
+
     def test_websocket_updates_are_fanned_out_from_celery_via_redis(self) -> None:
         websocket = (BACKEND_ROOT / "app/api/v1/websocket.py").read_text(encoding="utf-8")
         main = (BACKEND_ROOT / "app/main.py").read_text(encoding="utf-8")

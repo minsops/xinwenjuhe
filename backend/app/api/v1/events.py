@@ -242,7 +242,7 @@ async def translate_event(event_id: UUID, db: AsyncSession = Depends(get_db)):
         title = event.title_zh if _has_readable_chinese(event.title_zh) else event.title
         summary = event.summary_zh if _has_readable_chinese(event.summary_zh) else event.summary
         if title != event.title_zh or summary != event.summary_zh:
-            await _persist_event_chinese(event, title, summary)
+            await _persist_event_chinese(event, db, title, summary)
         return envelope({"title": title, "summary": summary, "cached": True, "fallback": False, "persisted": True})
 
     source_lang = "en" if event.title_en else "auto"
@@ -267,7 +267,7 @@ async def translate_event(event_id: UUID, db: AsyncSession = Depends(get_db)):
         )
         if not _has_readable_chinese(title) or not _has_readable_chinese(summary):
             raise TranslationError("事件翻译结果不是可用中文")
-        await _persist_event_chinese(event, title, summary)
+        await _persist_event_chinese(event, db, title, summary)
     except TranslationError as exc:
         return envelope(
             {
