@@ -34,6 +34,12 @@ test("renders TruthPuzzle dashboard", async ({ page }) => {
   await expect(page.getByText("安全事件").first()).toBeVisible();
   await expect(page.getByText("官方不确定性").first()).toBeVisible();
   await expect(page.getByText("强烈归责").first()).toBeVisible();
+  const narrative = page.getByLabel("叙事框架");
+  await expect(narrative.getByText("强调点：").first()).toBeVisible();
+  await expect(narrative.getByText("官方仍在核实原因")).toBeVisible();
+  await expect(narrative.getByText("关键措辞：").first()).toBeVisible();
+  await narrative.getByRole("button", { name: "显示原文" }).first().click();
+  await expect(narrative.getByText("security")).toBeVisible();
   const sourceGraph = page.getByLabel("来源图谱");
   await expect(sourceGraph.getByText("路透社 / Reuters")).toBeVisible();
   await expect(sourceGraph.getByText("伊朗伊斯兰共和国通讯社 / IRNA")).toBeVisible();

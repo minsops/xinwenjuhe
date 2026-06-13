@@ -1,6 +1,7 @@
 import { Tags } from "lucide-react";
 import { formatSourceName, getUiText } from "../../utils/i18n";
 import { Badge } from "../shared/Badge";
+import { OriginalText } from "./OriginalText";
 
 type Props = {
   frames: Array<Record<string, unknown>>;
@@ -10,27 +11,86 @@ type Props = {
 export function NarrativeFrameComparison({ frames, sourceLabels = {} }: Props) {
   const text = getUiText();
   return (
-    <section className="p-4">
+    <section className="p-4" aria-label={text.narrativeFrames}>
       <div className="mb-3 flex items-center gap-2 font-semibold text-civic dark:text-cyan-200">
         <Tags className="h-4 w-4" />
         {text.narrativeFrames}
       </div>
       <div className="space-y-2">
         {frames.length ? frames.map((frame, index) => {
-          const tags = Array.isArray(frame.frames) ? frame.frames.map((item) => formatFrameLabel(String(item))) : ["一般新闻报道"];
+          const rawTags = valueList(frame.frames);
+          const tags = rawTags.length ? rawTags.map((item) => formatFrameLabel(item)) : ["一般新闻报道"];
           const sourceId = String(frame.source_id ?? "");
           const sourceName = formatNarrativeSourceName(sourceId, frame.source_name, sourceLabels, index);
+          const framesOriginal = originalListText(frame.frames_original, rawTags, tags);
+          const angle = frame.angle ? formatFrameLabel(String(frame.angle)) : "";
+          const angleOriginal = originalText(frame.angle_original, frame.angle, angle);
+          const tone = frame.tone ? formatFrameLabel(String(frame.tone)) : "";
+          const toneOriginal = originalText(frame.tone_original, frame.tone, tone);
           return (
             <details key={index} open={index < 2} className="rounded border border-stone-200 p-3 text-sm dark:border-stone-700">
               <summary className="cursor-pointer">{sourceName}</summary>
               <div className="mt-2 flex flex-wrap gap-2">{tags.map((tag) => <Badge key={tag} tone="blue">{tag}</Badge>)}</div>
-              {frame.angle ? <div className="mt-2 text-stone-600 dark:text-stone-300">角度：{formatFrameLabel(String(frame.angle))}</div> : null}
-              {frame.tone ? <div className="mt-1 text-stone-600 dark:text-stone-300">基调：{formatFrameLabel(String(frame.tone))}</div> : null}
+              <FrameField
+                label="框架"
+                value={tags.join("、")}
+                original={framesOriginal}
+                originalLanguage={String(frame.frames_original_language ?? "auto")}
+              />
+              {angle ? (
+                <FrameField
+                  label="角度"
+                  value={angle}
+                  original={angleOriginal}
+                  originalLanguage={String(frame.angle_original_language ?? "auto")}
+                />
+              ) : null}
+              {tone ? (
+                <FrameField
+                  label="基调"
+                  value={tone}
+                  original={toneOriginal}
+                  originalLanguage={String(frame.tone_original_language ?? "auto")}
+                />
+              ) : null}
+              <FrameField
+                label="强调点"
+                value={listText(frame.emphasis)}
+                original={listText(frame.emphasis_original)}
+                originalLanguage={String(frame.emphasis_original_language ?? "auto")}
+              />
+              <FrameField
+                label="淡化点"
+                value={listText(frame.downplayed)}
+                original={listText(frame.downplayed_original)}
+                originalLanguage={String(frame.downplayed_original_language ?? "auto")}
+              />
+              <FrameField
+                label="关键措辞"
+                value={listText(frame.wording)}
+                original={listText(frame.wording_original)}
+                originalLanguage={String(frame.wording_original_language ?? "auto")}
+              />
             </details>
           );
         }) : <p className="text-sm text-stone-500">{text.noFrames}</p>}
       </div>
     </section>
+  );
+}
+
+function FrameField({ label, value, original, originalLanguage }: { label: string; value?: string; original?: string; originalLanguage: string }) {
+  if (!value) return null;
+  return (
+    <div className="mt-2 text-stone-600 dark:text-stone-300">
+      <span className="font-medium text-stone-700 dark:text-stone-200">{label}：</span>
+      <OriginalText
+        className="mt-1 inline leading-6"
+        text={value}
+        original={original}
+        originalLanguage={originalLanguage}
+      />
+    </div>
   );
 }
 
@@ -83,4 +143,30 @@ function formatNarrativeSourceName(
 
 function isUuidLike(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.trim());
+}
+
+function valueList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
+  if (typeof value === "string" && value.trim()) return [value.trim()];
+  return [];
+}
+
+function listText(value: unknown): string | undefined {
+  const values = valueList(value);
+  return values.length ? values.join("、") : undefined;
+}
+
+function originalListText(original: unknown, rawValues: string[], formattedValues: string[]): string | undefined {
+  const explicit = listText(original);
+  if (explicit) return explicit;
+  const changedRaw = rawValues.filter((value, index) => value !== formattedValues[index] && /[a-z]/i.test(value));
+  return changedRaw.length ? changedRaw.join("、") : undefined;
+}
+
+function originalText(original: unknown, raw: unknown, formatted: string): string | undefined {
+  if (typeof original === "string" && original.trim()) return original.trim();
+  if (typeof raw !== "string") return undefined;
+  const value = raw.trim();
+  if (value && value !== formatted && /[a-z]/i.test(value)) return value;
+  return undefined;
 }

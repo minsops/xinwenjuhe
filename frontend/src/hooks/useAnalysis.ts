@@ -65,8 +65,48 @@ function demoAnalysis(): EventAnalysis {
       total: 2
     }],
     narrative_frames: [
-      { source_id: "Reuters", frames: ["security", "official_uncertainty"], angle: "factual_report", tone: "neutral" },
-      { source_id: "IRNA", frames: ["attack", "external_responsibility"], angle: "responsibility", tone: "strong attribution" }
+      {
+        source_id: "Reuters",
+        frames: ["安全事件", "官方不确定性"],
+        frames_original: ["security", "official_uncertainty"],
+        frames_original_language: "en",
+        angle: "事实报道",
+        angle_original: "factual_report",
+        angle_original_language: "en",
+        emphasis: ["官方仍在核实原因"],
+        emphasis_original: ["official uncertainty"],
+        emphasis_original_language: "en",
+        downplayed: ["责任归属"],
+        downplayed_original: ["attribution"],
+        downplayed_original_language: "en",
+        tone: "中性",
+        tone_original: "neutral",
+        tone_original_language: "en",
+        wording: ["据官员称", "仍在调查"],
+        wording_original: ["officials said", "under investigation"],
+        wording_original_language: "en"
+      },
+      {
+        source_id: "IRNA",
+        frames: ["袭击叙事", "外部责任"],
+        frames_original: ["attack", "external_responsibility"],
+        frames_original_language: "en",
+        angle: "责任归属",
+        angle_original: "responsibility",
+        angle_original_language: "en",
+        emphasis: ["更高的受影响人数"],
+        emphasis_original: ["higher affected count"],
+        emphasis_original_language: "en",
+        downplayed: ["独立核验状态"],
+        downplayed_original: ["independent verification status"],
+        downplayed_original_language: "en",
+        tone: "强烈归责",
+        tone_original: "strong attribution",
+        tone_original_language: "en",
+        wording: ["外国势力"],
+        wording_original: ["foreign forces"],
+        wording_original_language: "en"
+      }
     ],
     timeline: [
       {

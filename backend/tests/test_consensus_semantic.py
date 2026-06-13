@@ -143,6 +143,43 @@ class ConsensusSemanticTest(unittest.TestCase):
         self.assertEqual(blind_spot["description_original"], "Only one regional outlet reported damage near the port.")
         self.assertEqual(blind_spot["description_original_language"], "en")
 
+    def test_localize_payload_preserves_original_narrative_frame_fields(self) -> None:
+        payload = {
+            "summary": "中文概要",
+            "consensus_facts": [],
+            "disputed_facts": [],
+            "blind_spots": [],
+            "timeline": [],
+            "narrative_frames": [
+                {
+                    "frames": ["security_incident", "official_uncertainty"],
+                    "angle": "factual report",
+                    "emphasis": ["official claims"],
+                    "downplayed": ["civilian impact"],
+                    "tone": "neutral",
+                    "wording": ["reportedly"],
+                }
+            ],
+        }
+
+        async def fail_translation(*args, **kwargs):
+            from app.services.processor.translator import TranslationError
+
+            raise TranslationError("翻译服务返回了原文")
+
+        with patch("app.services.processor.translator.TranslationService.translate_on_demand", fail_translation):
+            localized = asyncio.run(ConsensusMapper(llm=EmptyLLM()).localize_payload(payload))
+
+        frame = localized["narrative_frames"][0]
+        self.assertEqual(frame["frames"], ["安全事件", "官方不确定性"])
+        self.assertEqual(frame["angle_original"], "factual report")
+        self.assertEqual(frame["angle_original_language"], "en")
+        self.assertIn("强调点", frame["emphasis"][0])
+        self.assertEqual(frame["emphasis_original"], ["official claims"])
+        self.assertEqual(frame["emphasis_original_language"], "en")
+        self.assertEqual(frame["tone"], "中性")
+        self.assertEqual(frame["wording_original"], ["reportedly"])
+
     def test_guess_language_labels_common_original_scripts(self) -> None:
         mapper = ConsensusMapper(llm=EmptyLLM())
 

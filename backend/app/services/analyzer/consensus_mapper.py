@@ -140,6 +140,8 @@ class ConsensusMapper:
                 translator,
                 fallback="这条时间轴事实暂时没有可用中文翻译。请点击“显示原文”查看原始表述。",
             )
+        for item in (payload.get("narrative_frames") or [])[:20]:
+            await self._translate_frame_fields(item, translator)
         return payload
 
     @classmethod
@@ -195,6 +197,110 @@ class ConsensusMapper:
         except TranslationError:
             translated = fallback
         item[field] = translated
+
+    @classmethod
+    async def _translate_frame_fields(cls, item: dict, translator: TranslationService) -> None:
+        await cls._translate_item_field(
+            item,
+            "angle",
+            "angle_original",
+            translator,
+            fallback=cls._fallback_frame_label(
+                str(item.get("angle") or ""),
+                "这条叙事角度暂时没有可用中文翻译。请点击“显示原文”查看原始表述。",
+            ),
+        )
+        await cls._translate_item_field(
+            item,
+            "tone",
+            "tone_original",
+            translator,
+            fallback=cls._fallback_frame_label(
+                str(item.get("tone") or ""),
+                "这条叙事基调暂时没有可用中文翻译。请点击“显示原文”查看原始表述。",
+            ),
+        )
+        for field, original_field, fallback in (
+            ("frames", "frames_original", "其他叙事框架"),
+            ("emphasis", "emphasis_original", "这条强调点暂时没有可用中文翻译。请点击“显示原文”查看原始表述。"),
+            ("downplayed", "downplayed_original", "这条淡化点暂时没有可用中文翻译。请点击“显示原文”查看原始表述。"),
+            ("wording", "wording_original", "这条关键措辞暂时没有可用中文翻译。请点击“显示原文”查看原始表述。"),
+        ):
+            await cls._translate_list_field(item, field, original_field, translator, fallback=fallback)
+
+    @classmethod
+    async def _translate_list_field(
+        cls,
+        item: dict,
+        field: str,
+        original_field: str,
+        translator: TranslationService,
+        fallback: str,
+    ) -> None:
+        value = item.get(field)
+        if isinstance(value, str):
+            values = [value]
+        elif isinstance(value, list):
+            values = [str(entry).strip() for entry in value if str(entry).strip()]
+        else:
+            return
+        if not values:
+            return
+        needs_translation = [entry for entry in values if cls._needs_chinese_translation(entry)]
+        if not needs_translation:
+            item[field] = values
+            return
+        languages = {cls._guess_language(entry) for entry in needs_translation}
+        item.setdefault(original_field, values)
+        item.setdefault(f"{original_field}_language", next(iter(languages)) if len(languages) == 1 else "multi")
+        translated_values: list[str] = []
+        for entry in values:
+            if not cls._needs_chinese_translation(entry):
+                translated_values.append(entry)
+                continue
+            try:
+                translated, _ = await translator.translate_on_demand(
+                    entry,
+                    cls._guess_language(entry),
+                    "zh",
+                    field=f"analysis_{field}",
+                )
+            except TranslationError:
+                translated = cls._fallback_frame_label(entry, fallback)
+            translated_values.append(translated)
+        item[field] = translated_values
+
+    @staticmethod
+    def _fallback_frame_label(value: str, fallback: str) -> str:
+        normalized = value.strip().lower().replace("-", "_")
+        labels = {
+            "news_report": "一般新闻报道",
+            "factual report": "事实报道",
+            "factual_report": "事实报道",
+            "neutral": "中性",
+            "critical": "批评",
+            "alleged": "指称",
+            "conflict": "冲突",
+            "official_statement": "官方表述",
+            "security": "安全事件",
+            "security_incident": "安全事件",
+            "attack": "袭击叙事",
+            "responsibility": "责任归属",
+            "external_responsibility": "外部责任",
+            "official_claims": "官方说法",
+            "official_uncertainty": "官方不确定性",
+            "strong attribution": "强烈归责",
+            "strong_attribution": "强烈归责",
+            "humanitarian": "人道影响",
+            "casualties": "伤亡规模",
+            "casualty_claim": "伤亡主张",
+            "verification_gap": "核验不足",
+            "regional_tension": "地区紧张",
+            "victim_frame": "受害者叙事",
+            "aggressor_frame": "加害者叙事",
+            "accountability": "追责叙事",
+        }
+        return labels.get(normalized, fallback)
 
     @staticmethod
     def _needs_chinese_translation(value: str) -> bool:
