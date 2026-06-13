@@ -11,6 +11,7 @@ from app.models.contradiction import Contradiction
 from app.models.fact_fragment import FactFragment
 from app.services.llm.base import LLMProvider
 from app.services.llm.factory import get_llm_provider
+from app.services.processor.translator import TranslationError, TranslationService
 
 
 class ConsensusMapper:
@@ -79,7 +80,8 @@ class ConsensusMapper:
             if len(group["independent_source_keys"]) / total < 0.3
         ]
         summary = await self._generate_summary(consensus, disputed, total)
-        return {
+        timeline = self._timeline(fragments)
+        payload = {
             "event_id": event_id,
             "summary": summary,
             "consensus_facts": consensus,
@@ -87,9 +89,60 @@ class ConsensusMapper:
             "blind_spots": blind_spots,
             "narrative_frames": narrative_frames or [],
             "source_graph": self._source_graph(fragments, contradictions),
-            "timeline": self._timeline(fragments),
+            "timeline": timeline,
             "article_count_at_analysis": analyzed_article_count,
         }
+        return await self.localize_payload(payload)
+
+    async def localize_payload(self, payload: dict) -> dict:
+        """Translate user-visible analysis fields to Chinese while preserving originals."""
+        translator = TranslationService()
+        for item in (payload.get("consensus_facts") or [])[:12]:
+            await self._translate_item_field(item, "fact", "fact_original", translator)
+        for item in (payload.get("disputed_facts") or [])[:20]:
+            await self._translate_item_field(item, "topic", "topic_original", translator)
+        for item in (payload.get("blind_spots") or [])[:12]:
+            await self._translate_item_field(item, "description", "description_original", translator)
+        for item in (payload.get("timeline") or [])[:8]:
+            await self._translate_item_field(item, "fact", "fact_original", translator)
+        return payload
+
+    @classmethod
+    async def _translate_item_field(
+        cls,
+        item: dict,
+        field: str,
+        original_field: str,
+        translator: TranslationService,
+    ) -> None:
+        value = item.get(field)
+        if not isinstance(value, str) or not value.strip() or not cls._needs_chinese_translation(value):
+            return
+        item.setdefault(original_field, value)
+        try:
+            translated, _ = await translator.translate_on_demand(
+                value,
+                "auto",
+                "zh",
+                field=f"analysis_{field}",
+            )
+        except TranslationError:
+            translated = "这条分析项暂时没有可用中文翻译。请查看原文。"
+        item[field] = translated
+
+    @staticmethod
+    def _needs_chinese_translation(value: str) -> bool:
+        text = value.strip()
+        if not text:
+            return False
+        chinese_count = sum(1 for char in text if "\u4e00" <= char <= "\u9fff")
+        latin_count = sum(1 for char in text if char.isascii() and char.isalpha())
+        kana_count = sum(1 for char in text if "\u3040" <= char <= "\u30ff")
+        if kana_count:
+            return True
+        if chinese_count < 6:
+            return True
+        return latin_count > chinese_count * 1.5
 
     def _semantic_group(self, fragments: list[FactFragment]) -> list[dict]:
         """Group fact fragments by embedding similarity instead of exact text."""

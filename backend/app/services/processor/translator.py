@@ -107,6 +107,7 @@ class TranslationService:
             "zh": "简体中文",
             "zh-cn": "简体中文",
             "zh-hans": "简体中文",
+            "auto": "原文语言",
             "en": "英文",
             "en-us": "英文",
             "en-gb": "英文",

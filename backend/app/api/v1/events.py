@@ -25,6 +25,7 @@ from app.schemas.event import EventCreate, EventMergeRequest, EventRead, EventSp
 from app.services.clustering.pipeline import EventClusteringService
 from app.services.collector.ingestion import ArticleIngestionService
 from app.services.analyzer.event_analysis_service import EventAnalysisService
+from app.services.analyzer.consensus_mapper import ConsensusMapper
 from app.services.event_management import EventManagementService
 from app.services.processor.translator import TranslationError, TranslationService
 from app.api.v1.websocket import notify_event_update
@@ -279,7 +280,9 @@ async def get_event_analysis(event_id: UUID, db: AsyncSession = Depends(get_db))
     ).scalar_one_or_none()
     if not analysis:
         raise ApiError("analysis_not_found", "Analysis not found", 404)
-    return envelope(EventAnalysisRead.model_validate(analysis).model_dump(mode="json"))
+    payload = EventAnalysisRead.model_validate(analysis).model_dump(mode="json")
+    payload = await ConsensusMapper().localize_payload(payload)
+    return envelope(payload)
 
 
 @router.get("/{event_id}/contradictions")
