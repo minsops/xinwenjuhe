@@ -124,9 +124,12 @@ async def _collect_hot_events(task_id: str, limit: int) -> dict:
         results = []
         for event in events:
             try:
-                results.append(await service.collect_google_news_for_event(event))
+                event_result = await service.collect_google_news_for_event(event)
+                results.append(event_result)
             except Exception as exc:
-                results.append({"event_id": str(event.id), "status": "failed", "error": str(exc)})
+                event_result = {"event_id": str(event.id), "status": "failed", "error": str(exc)}
+                results.append(event_result)
+            await _publish_articles_collected(event.id, event_result)
         result = {
             "status": "ok",
             "events": len(events),
@@ -146,6 +149,8 @@ async def _collect_articles_for_event(task_id: str, event_id: UUID) -> dict:
             result = {"status": "missing_event", "event_id": str(event_id)}
         else:
             result = await ArticleIngestionService(db).collect_google_news_for_event(event)
+    if result.get("status") != "missing_event":
+        await _publish_articles_collected(event_id, result)
     set_progress(task_id, status="complete", step="collect_articles_for_event", result=result)
     return result
 
@@ -274,3 +279,7 @@ def _trigger_reanalysis(event_ids: set[UUID]) -> int:
 async def _publish_backfill_complete(event_ids: set[UUID], result: dict) -> None:
     for event_id in event_ids:
         await publish_event_update({"event_id": str(event_id), "type": "backfill_complete", "payload": result})
+
+
+async def _publish_articles_collected(event_id: UUID, result: dict) -> None:
+    await publish_event_update({"event_id": str(event_id), "type": "articles_collected", "payload": result})

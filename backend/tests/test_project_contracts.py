@@ -77,6 +77,8 @@ class ProjectContractsTest(unittest.TestCase):
         self.assertIn('/{article_id}/backfill-fulltext', articles_api)
         self.assertIn("backfill_article_fulltext", collect_task)
         self.assertIn("publish_event_update", collect_task)
+        self.assertIn('"articles_collected"', collect_task)
+        self.assertIn("_publish_articles_collected", collect_task)
         self.assertIn('"backfill_complete"', collect_task)
         self.assertIn("_publish_backfill_complete", collect_task)
         self.assertIn('router.post("/sources")', discovery_api)
