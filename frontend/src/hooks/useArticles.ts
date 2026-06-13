@@ -6,12 +6,30 @@ export function useArticles(eventId?: string) {
   const [articles, setArticles] = useState<Article[]>([]);
 
   useEffect(() => {
-    if (!eventId) return;
+    let active = true;
+    if (!eventId) {
+      setArticles([]);
+      return () => {
+        active = false;
+      };
+    }
+    setArticles([]);
     if (eventId === "demo") {
       setArticles(demoArticles());
-      return;
+      return () => {
+        active = false;
+      };
     }
-    fetchEventArticles(eventId).then((rows) => setArticles(sortReadableArticles(rows))).catch(() => setArticles(demoArticles()));
+    fetchEventArticles(eventId)
+      .then((rows) => {
+        if (active) setArticles(sortReadableArticles(rows));
+      })
+      .catch(() => {
+        if (active) setArticles(demoArticles());
+      });
+    return () => {
+      active = false;
+    };
   }, [eventId]);
 
   return articles;

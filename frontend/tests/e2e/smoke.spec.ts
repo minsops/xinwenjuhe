@@ -92,6 +92,25 @@ test("shows actionable empty state when no events exist", async ({ page }) => {
   await expect(page.getByText("请选择一个事件查看本站分析和来源报道。")).toBeVisible();
 });
 
+test("clears stale reports when filters remove all events", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route("**/api/v1/**", (route) => route.abort());
+  await page.route("**/api/v1/events**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.searchParams.get("category") === "technology") {
+      return route.fulfill({ json: { data: [] } });
+    }
+    return route.abort();
+  });
+
+  await page.goto("/");
+
+  await expect(page.getByText("Officials report 12 casualties after overnight strike")).toBeVisible();
+  await page.getByLabel("按分类筛选").selectOption("technology");
+  await expect(page.getByText("请选择一个事件查看本站分析和来源报道。")).toBeVisible();
+  await expect(page.getByText("Officials report 12 casualties after overnight strike")).toHaveCount(0);
+});
+
 test("localizes unknown operation task codes", async ({ page }) => {
   await page.route("**/api/v1/**", (route) => route.abort());
   await page.route("**/api/v1/tasks", (route) =>

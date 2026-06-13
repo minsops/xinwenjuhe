@@ -6,12 +6,30 @@ export function useAnalysis(eventId?: string, refreshKey = 0) {
   const [analysis, setAnalysis] = useState<EventAnalysis | undefined>();
 
   useEffect(() => {
-    if (!eventId) return;
+    let active = true;
+    if (!eventId) {
+      setAnalysis(undefined);
+      return () => {
+        active = false;
+      };
+    }
+    setAnalysis(undefined);
     if (eventId === "demo") {
       setAnalysis(demoAnalysis());
-      return;
+      return () => {
+        active = false;
+      };
     }
-    fetchAnalysis(eventId).then(setAnalysis).catch(() => setAnalysis(demoAnalysis()));
+    fetchAnalysis(eventId)
+      .then((nextAnalysis) => {
+        if (active) setAnalysis(nextAnalysis);
+      })
+      .catch(() => {
+        if (active) setAnalysis(demoAnalysis());
+      });
+    return () => {
+      active = false;
+    };
   }, [eventId, refreshKey]);
 
   return analysis;

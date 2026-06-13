@@ -31,13 +31,23 @@ export function NewsPanel({ articles, hasSelectedEvent = true, selectedArticleId
   const translatedText = selected ? translatedByArticle[selected.id] : undefined;
 
   useEffect(() => {
-    if (selectedArticleId) {
+    if (!readableArticles.length) {
+      setSelectedId(undefined);
+      setShowingChinese(true);
+      setTranslationError(undefined);
+      setBackfillNotice(undefined);
+      return;
+    }
+    if (selectedArticleId && readableArticles.some((article) => article.id === selectedArticleId)) {
       setSelectedId(selectedArticleId);
       setShowingChinese(true);
       setTranslationError(undefined);
       setBackfillNotice(undefined);
-    } else if (!selectedId && readableArticles[0]) {
+    } else if (!selectedId || !readableArticles.some((article) => article.id === selectedId)) {
       setSelectedId(readableArticles[0].id);
+      setShowingChinese(true);
+      setTranslationError(undefined);
+      setBackfillNotice(undefined);
     }
   }, [readableArticles, selectedArticleId, selectedId]);
 
