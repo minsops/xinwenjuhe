@@ -80,7 +80,16 @@ class RSSCollector:
                 response = await client.get(url, headers={"User-Agent": random.choice(self.USER_AGENTS)})
                 response.raise_for_status()
                 downloaded = response.text
-        return trafilatura.extract(downloaded, include_comments=False, include_tables=False) or ""
+        return (
+            trafilatura.extract(
+                downloaded,
+                url=url,
+                include_comments=False,
+                include_tables=False,
+                favor_recall=True,
+            )
+            or ""
+        )
 
     @staticmethod
     def _parse_date(raw: str | None) -> datetime | None:

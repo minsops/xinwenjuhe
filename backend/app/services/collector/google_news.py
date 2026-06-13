@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-from urllib.parse import quote_plus, urlparse
+import base64
+import re
+from urllib.parse import quote_plus, unquote, urlparse
 
 import feedparser
 import httpx
@@ -157,6 +159,45 @@ class GoogleNewsCollector:
         """Resolve Google News redirect URLs to their final target when possible."""
         if "news.google.com" not in url:
             return url
+        decoded = self.decode_google_news_url(url)
+        if decoded:
+            return decoded
         async with httpx.AsyncClient(timeout=settings.request_timeout_seconds, follow_redirects=True) as client:
             response = await client.get(url, headers={"User-Agent": "TruthPuzzle/0.1"})
             return str(response.url)
+
+    @staticmethod
+    def decode_google_news_url(url: str) -> str | None:
+        """Extract the publisher URL embedded in Google News RSS article URLs."""
+        parsed = urlparse(url)
+        if "news.google.com" not in parsed.netloc:
+            return url
+        segments = [segment for segment in parsed.path.split("/") if segment]
+        candidates: list[str] = []
+        for marker in ("articles", "read"):
+            if marker in segments:
+                index = segments.index(marker) + 1
+                if index < len(segments):
+                    candidates.append(segments[index])
+        if segments:
+            candidates.append(segments[-1])
+
+        for candidate in candidates:
+            token = unquote(candidate).split("?", 1)[0]
+            decoded = GoogleNewsCollector._decode_url_token(token)
+            if decoded:
+                return decoded
+        return None
+
+    @staticmethod
+    def _decode_url_token(token: str) -> str | None:
+        padded = token + "=" * (-len(token) % 4)
+        try:
+            payload = base64.urlsafe_b64decode(padded.encode("ascii"))
+        except Exception:
+            return None
+        for match in re.findall(rb"https?://[A-Za-z0-9\-._~:/?#\[\]@!$&()*+,;=%]+", payload):
+            value = match.decode("utf-8", errors="ignore").rstrip(").,;")
+            if value and "news.google.com" not in urlparse(value).netloc:
+                return value
+        return None

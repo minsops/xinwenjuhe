@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 from importlib.util import find_spec
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -42,6 +43,46 @@ class GoogleNewsFeedsTest(unittest.TestCase):
             GoogleNewsCollector.feed_for_language("xx"),
             GoogleNewsCollector.REGION_FEEDS["en-US"],
         )
+
+    def test_decodes_google_news_rss_article_url_to_publisher_url(self) -> None:
+        publisher_url = "https://publisher.test/world/story?id=42&lang=en"
+        token = base64.urlsafe_b64encode(f'\x08\x13"{publisher_url}'.encode()).decode().rstrip("=")
+        google_url = f"https://news.google.com/rss/articles/{token}?oc=5"
+
+        decoded = GoogleNewsCollector.decode_google_news_url(google_url)
+
+        self.assertEqual(decoded, publisher_url)
+
+    def test_search_event_fetches_fulltext_from_decoded_publisher_url(self) -> None:
+        publisher_url = "https://publisher.test/full"
+        token = base64.urlsafe_b64encode(f'\x08\x13"{publisher_url}'.encode()).decode().rstrip("=")
+        entries = [
+            SimpleNamespace(
+                link=f"https://news.google.com/rss/articles/{token}?oc=5",
+                title="Full",
+                summary="short",
+                published=None,
+            ),
+        ]
+        requested_urls: list[str] = []
+
+        async def fetch_full_content(self, url: str) -> str:
+            requested_urls.append(url)
+            return "Full article body. " * 20
+
+        with (
+            patch(
+                "app.services.collector.google_news.feedparser.parse",
+                return_value=SimpleNamespace(entries=entries),
+            ),
+            patch("app.services.collector.google_news.httpx.AsyncClient", FakeAsyncClient),
+            patch.object(RSSCollector, "fetch_full_content", fetch_full_content),
+        ):
+            articles = asyncio.run(GoogleNewsCollector().search_event("query", "en-US"))
+
+        self.assertEqual(requested_urls, [publisher_url])
+        self.assertEqual(articles[0].external_url, publisher_url)
+        self.assertGreaterEqual(len(articles[0].content_original), GoogleNewsCollector.MIN_FULLTEXT_LENGTH)
 
     def test_search_event_keeps_only_fulltext_articles(self) -> None:
         entries = [
