@@ -119,6 +119,7 @@ class ConsensusMapper:
         if not isinstance(value, str) or not value.strip() or not cls._needs_chinese_translation(value):
             return
         item.setdefault(original_field, value)
+        item.setdefault(f"{original_field}_language", "auto")
         try:
             translated, _ = await translator.translate_on_demand(
                 value,

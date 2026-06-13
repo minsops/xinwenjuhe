@@ -38,7 +38,7 @@ export function SourceGraph({ graph, sourceLabels = {} }: Props) {
           <div className="flex flex-wrap gap-2">
             {sources.map((source) => (
               <span key={source.id} className="max-w-full truncate rounded border border-civic/30 bg-civic/10 px-2 py-1 text-xs text-civic dark:text-cyan-200">
-                {sourceLabels[source.id] ?? source.label ?? source.name ?? source.id}
+                {formatSourceNode(source, sourceLabels)}
               </span>
             ))}
           </div>
@@ -46,4 +46,19 @@ export function SourceGraph({ graph, sourceLabels = {} }: Props) {
       )}
     </section>
   );
+}
+
+function formatSourceNode(
+  source: { id: string; label?: string; name?: string },
+  sourceLabels: Record<string, string>,
+): string {
+  if (sourceLabels[source.id]) return sourceLabels[source.id];
+  if (source.label && !isUuidLike(source.label)) return source.label;
+  if (source.name && !isUuidLike(source.name)) return source.name;
+  if (!isUuidLike(source.id)) return source.id;
+  return "未知来源";
+}
+
+function isUuidLike(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.trim());
 }

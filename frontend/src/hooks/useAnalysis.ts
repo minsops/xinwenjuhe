@@ -21,16 +21,52 @@ function demoAnalysis(): EventAnalysis {
   return {
     event_id: "demo",
     summary: "多家报道确认夜间发生同一事件，但伤亡数字和责任归属仍存在明显分歧。",
-    consensus_facts: [{ fact: "夜间发生事件，当地应急力量随后介入。", confirmed_by: 2, total: 2, article_ids: ["a1"], syndicated_count: 1 }],
-    disputed_facts: [{ topic: "不同来源对伤亡人数的说法从 12 人到 200 多人不等。", type: "number_discrepancy", severity: "critical" }],
-    blind_spots: [{ description: "多数报道缺少独立现场核验。", mentioned_by: 1, total: 2 }],
+    consensus_facts: [{
+      fact: "夜间发生事件，当地应急力量随后介入。",
+      fact_original: "An overnight incident occurred and local authorities responded.",
+      fact_original_language: "en",
+      confirmed_by: 2,
+      total: 2,
+      article_ids: ["a1"],
+      syndicated_count: 1
+    }],
+    disputed_facts: [{
+      topic: "不同来源对伤亡人数的说法从 12 人到 200 多人不等。",
+      topic_original: "Sources report casualty figures ranging from 12 to more than 200.",
+      topic_original_language: "en",
+      type: "number_discrepancy",
+      severity: "critical"
+    }],
+    blind_spots: [{
+      description: "多数报道缺少独立现场核验。",
+      description_original: "Most reports lack independent on-site verification.",
+      description_original_language: "en",
+      mentioned_by: 1,
+      total: 2
+    }],
     narrative_frames: [
       { source_id: "Reuters", frames: ["安全事件", "官方不确定性"], tone: "中性" },
       { source_id: "IRNA", frames: ["袭击叙事", "外部责任"], tone: "强烈归责" }
     ],
     timeline: [
-      { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(), fact: "最早报道描述夜间发生事件。", fragment_type: "what", article_id: "a1", source_id: "Reuters" },
-      { timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), fact: "不同来源发布了相互冲突的伤亡数字。", fragment_type: "number", article_id: "a2", source_id: "IRNA" }
+      {
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
+        fact: "最早报道描述夜间发生事件。",
+        fact_original: "The earliest report described an overnight incident.",
+        fact_original_language: "en",
+        fragment_type: "what",
+        article_id: "a1",
+        source_id: "Reuters"
+      },
+      {
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
+        fact: "不同来源发布了相互冲突的伤亡数字。",
+        fact_original: "Different sources published conflicting casualty figures.",
+        fact_original_language: "en",
+        fragment_type: "number",
+        article_id: "a2",
+        source_id: "IRNA"
+      }
     ],
     source_graph: {
       nodes: [

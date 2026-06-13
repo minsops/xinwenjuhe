@@ -4,14 +4,15 @@ export type EventAnalysis = {
   summary: string;
   analysis_version?: number;
   article_count_at_analysis?: number;
-  consensus_facts: Array<{ fact: string; fact_original?: string; confirmed_by: number; total: number; article_ids?: string[]; source_ids?: string[]; syndicated_count?: number }>;
-  disputed_facts: Array<{ topic: string; topic_original?: string; type?: string; severity?: string; details?: unknown }>;
-  blind_spots: Array<{ description: string; description_original?: string; mentioned_by?: number; total?: number }>;
+  consensus_facts: Array<{ fact: string; fact_original?: string; fact_original_language?: string; confirmed_by: number; total: number; article_ids?: string[]; source_ids?: string[]; syndicated_count?: number }>;
+  disputed_facts: Array<{ topic: string; topic_original?: string; topic_original_language?: string; type?: string; severity?: string; details?: unknown }>;
+  blind_spots: Array<{ description: string; description_original?: string; description_original_language?: string; mentioned_by?: number; total?: number }>;
   narrative_frames: Array<Record<string, unknown>>;
   timeline?: Array<{
     timestamp?: string;
     fact?: string;
     fact_original?: string;
+    fact_original_language?: string;
     fragment_type?: string;
     article_id?: string;
     source_id?: string;

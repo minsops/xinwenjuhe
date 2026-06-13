@@ -2,6 +2,7 @@ import { AlertTriangle } from "lucide-react";
 import type { EventAnalysis } from "../../types/analysis";
 import { getUiText } from "../../utils/i18n";
 import { Badge } from "../shared/Badge";
+import { OriginalText } from "./OriginalText";
 
 type Props = {
   items: EventAnalysis["disputed_facts"];
@@ -18,7 +19,7 @@ export function DisputeZone({ items }: Props) {
       <div className="space-y-3">
         {items.length ? items.map((item) => (
           <div key={item.topic} className="rounded border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950">
-            <div>{item.topic}</div>
+            <OriginalText text={item.topic} original={item.topic_original} originalLanguage={item.topic_original_language} />
             <div className="mt-2 flex gap-2">
               {item.type ? <Badge tone="yellow">{formatDisputeType(item.type)}</Badge> : null}
               {item.severity ? <Badge tone="red">{formatSeverity(item.severity)}</Badge> : null}

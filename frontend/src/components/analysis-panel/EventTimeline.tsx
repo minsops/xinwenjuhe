@@ -1,5 +1,6 @@
 import type { EventAnalysis } from "../../types/analysis";
 import { getUiText } from "../../utils/i18n";
+import { OriginalText } from "./OriginalText";
 
 type Props = {
   items?: EventAnalysis["timeline"];
@@ -22,8 +23,13 @@ export function EventTimeline({ items = [] }: Props) {
                 {item.timestamp ? new Date(item.timestamp).toLocaleString("zh-CN", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : "--"}
               </time>
               <div className="border-l border-stone-300 pl-3 dark:border-stone-700">
-                <p className="leading-6 text-stone-800 dark:text-stone-100">{item.fact}</p>
-                {item.fragment_type ? <p className="mt-1 text-xs text-stone-500">{item.fragment_type}</p> : null}
+                <OriginalText
+                  className="leading-6 text-stone-800 dark:text-stone-100"
+                  text={item.fact}
+                  original={item.fact_original}
+                  originalLanguage={item.fact_original_language}
+                />
+                {item.fragment_type ? <p className="mt-1 text-xs text-stone-500">{formatFragmentType(item.fragment_type)}</p> : null}
               </div>
             </li>
           ))}
@@ -31,4 +37,17 @@ export function EventTimeline({ items = [] }: Props) {
       )}
     </section>
   );
+}
+
+function formatFragmentType(type: string): string {
+  const labels: Record<string, string> = {
+    what: "事件事实",
+    who: "相关人物/机构",
+    where: "地点",
+    when: "时间",
+    number: "数字",
+    cause: "原因",
+    consequence: "影响"
+  };
+  return labels[type] ?? type;
 }

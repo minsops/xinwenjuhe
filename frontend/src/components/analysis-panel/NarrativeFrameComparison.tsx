@@ -19,7 +19,7 @@ export function NarrativeFrameComparison({ frames, sourceLabels = {} }: Props) {
         {frames.length ? frames.map((frame, index) => {
           const tags = Array.isArray(frame.frames) ? frame.frames.map((item) => formatFrameLabel(String(item))) : ["一般新闻报道"];
           const sourceId = String(frame.source_id ?? "");
-          const sourceName = sourceLabels[sourceId] ?? String(frame.source_name ?? frame.source_id ?? `来源 ${index + 1}`);
+          const sourceName = formatSourceName(sourceId, frame.source_name, sourceLabels, index);
           return (
             <details key={index} className="rounded border border-stone-200 p-3 text-sm dark:border-stone-700">
               <summary className="cursor-pointer">{sourceName}</summary>
@@ -45,4 +45,20 @@ function formatFrameLabel(value: string): string {
     official_statement: "官方表述"
   };
   return labels[value.trim().toLowerCase()] ?? value;
+}
+
+function formatSourceName(
+  sourceId: string,
+  sourceName: unknown,
+  sourceLabels: Record<string, string>,
+  index: number,
+): string {
+  if (sourceId && sourceLabels[sourceId]) return sourceLabels[sourceId];
+  if (typeof sourceName === "string" && sourceName.trim() && !isUuidLike(sourceName)) return sourceName;
+  if (sourceId && !isUuidLike(sourceId)) return sourceId;
+  return `来源 ${index + 1}`;
+}
+
+function isUuidLike(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.trim());
 }

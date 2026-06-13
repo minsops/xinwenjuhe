@@ -47,6 +47,8 @@ class ConsensusSemanticTest(unittest.TestCase):
         self.assertEqual(len(payload["consensus_facts"]), 1)
         self.assertEqual(payload["consensus_facts"][0]["confirmed_by"], 2)
         self.assertEqual(len(payload["consensus_facts"][0]["article_ids"]), 2)
+        self.assertEqual(payload["consensus_facts"][0]["fact_original"], "Military base was hit by missiles")
+        self.assertEqual(payload["consensus_facts"][0]["fact_original_language"], "auto")
 
     def test_dissimilar_fragments_stay_separate(self) -> None:
         event_id = uuid.uuid4()
