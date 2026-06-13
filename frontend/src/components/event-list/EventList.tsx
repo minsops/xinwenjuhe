@@ -85,7 +85,12 @@ export function EventList({
         ))}
         {!events.length ? (
           <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-4 text-sm text-stone-500 dark:border-stone-800 dark:bg-stone-900/60 dark:text-stone-400">
-            没有找到匹配事件，试试清空搜索或筛选条件。
+            <div className="font-semibold text-stone-700 dark:text-stone-200">
+              {search || region || category ? text.noEventsFiltered : text.noEventsTitle}
+            </div>
+            <div className="mt-1 leading-5">
+              {search || region || category ? "当前筛选条件下没有事件。" : text.noEventsDescription}
+            </div>
           </div>
         ) : null}
       </div>

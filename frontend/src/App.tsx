@@ -150,21 +150,26 @@ export default function App() {
               </div>
             ) : null}
             <DualPanelLayout
-              left={analysis ? (
-                <AnalysisPanel
-                  analysis={analysis}
-                  eventId={selected?.id}
-                  sourceLabels={sourceLabels}
-                  onFactSelect={(articleId, fact) => {
-                    setFocusedArticleId(articleId);
-                    setHighlightedFact(fact);
-                  }}
-                  onReanalyze={() => setAnalysisRefreshKey((value) => value + 1)}
-                />
-              ) : <div><div className="p-4 text-sm text-stone-500">{text.loadingAnalysis}</div><Skeleton lines={6} /></div>}
+              left={selected ? (
+                analysis ? (
+                  <AnalysisPanel
+                    analysis={analysis}
+                    eventId={selected.id}
+                    sourceLabels={sourceLabels}
+                    onFactSelect={(articleId, fact) => {
+                      setFocusedArticleId(articleId);
+                      setHighlightedFact(fact);
+                    }}
+                    onReanalyze={() => setAnalysisRefreshKey((value) => value + 1)}
+                  />
+                ) : <div><div className="p-4 text-sm text-stone-500">{text.loadingAnalysis}</div><Skeleton lines={6} /></div>
+              ) : (
+                <EmptyPanel title={text.noEventsTitle} description={text.noEventsDescription} />
+              )}
               right={
                 <NewsPanel
                   articles={articles}
+                  hasSelectedEvent={Boolean(selected)}
                   selectedArticleId={focusedArticleId}
                   highlightedFact={highlightedFact}
                   onArticleSelect={(articleId) => {
@@ -176,6 +181,17 @@ export default function App() {
             />
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyPanel({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="flex min-h-[420px] items-center justify-center bg-white p-6 text-center dark:bg-stone-950">
+      <div className="max-w-md">
+        <div className="text-lg font-black text-stone-900 dark:text-stone-50">{title}</div>
+        <p className="mt-2 text-sm leading-6 text-stone-500 dark:text-stone-400">{description}</p>
       </div>
     </div>
   );

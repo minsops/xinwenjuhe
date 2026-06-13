@@ -2,18 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import type { Article } from "../../types/article";
 import { startArticleFulltextBackfill, translateArticle } from "../../services/api";
 import { getUiText } from "../../utils/i18n";
-import { Skeleton } from "../shared/Skeleton";
 import { ArticleView } from "./ArticleView";
 import { SourceTabs } from "./SourceTabs";
 
 type Props = {
   articles: Article[];
+  hasSelectedEvent?: boolean;
   selectedArticleId?: string;
   highlightedFact?: string;
   onArticleSelect?: (articleId: string) => void;
 };
 
-export function NewsPanel({ articles, selectedArticleId, highlightedFact, onArticleSelect }: Props) {
+export function NewsPanel({ articles, hasSelectedEvent = true, selectedArticleId, highlightedFact, onArticleSelect }: Props) {
   const text = getUiText();
   const [selectedId, setSelectedId] = useState<string | undefined>(articles[0]?.id);
   const [showingChinese, setShowingChinese] = useState(true);
@@ -92,21 +92,34 @@ export function NewsPanel({ articles, selectedArticleId, highlightedFact, onArti
       {articles.length ? (
         <SourceTabs articles={articles} selectedId={selected?.id} onSelect={(id) => { setSelectedId(id); setShowingChinese(true); setTranslationError(undefined); setBackfillNotice(undefined); onArticleSelect?.(id); }} />
       ) : null}
-      {!articles.length ? <div className="p-5"><Skeleton lines={8} /></div> : null}
-      <ArticleView
-        article={selected}
-        showingChinese={showingChinese}
-        loadingTranslation={loading}
-        translatedTitle={translatedText?.title}
-        translatedContent={translatedText?.content}
-        translationError={translationError}
-        backfillNotice={backfillNotice}
-        backfillLoading={backfillLoading}
-        highlightedFact={highlightedFact}
-        onShowChinese={handleShowChinese}
-        onShowOriginal={() => { setShowingChinese(false); setTranslationError(undefined); }}
-        onBackfillFulltext={handleBackfillFulltext}
-      />
+      {!articles.length ? (
+        <div className="flex min-h-[420px] items-center justify-center p-6 text-center">
+          <div className="max-w-sm">
+            <div className="text-lg font-black text-stone-900 dark:text-stone-50">
+              {hasSelectedEvent ? text.noArticlesTitle : text.noEventsTitle}
+            </div>
+            <p className="mt-2 text-sm leading-6 text-stone-500 dark:text-stone-400">
+              {hasSelectedEvent ? text.noArticlesDescription : text.noEventSelected}
+            </p>
+          </div>
+        </div>
+      ) : null}
+      {articles.length ? (
+        <ArticleView
+          article={selected}
+          showingChinese={showingChinese}
+          loadingTranslation={loading}
+          translatedTitle={translatedText?.title}
+          translatedContent={translatedText?.content}
+          translationError={translationError}
+          backfillNotice={backfillNotice}
+          backfillLoading={backfillLoading}
+          highlightedFact={highlightedFact}
+          onShowChinese={handleShowChinese}
+          onShowOriginal={() => { setShowingChinese(false); setTranslationError(undefined); }}
+          onBackfillFulltext={handleBackfillFulltext}
+        />
+      ) : null}
     </div>
   );
 }

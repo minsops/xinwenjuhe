@@ -65,3 +65,19 @@ test("exposes event selection and filters on mobile", async ({ page }) => {
   await page.getByLabel("按分类筛选").selectOption("conflict");
   await expect(page.locator("h1", { hasText: "边境事件出现相互矛盾的伤亡报道" })).toBeVisible();
 });
+
+test("shows actionable empty state when no events exist", async ({ page }) => {
+  await page.route("**/api/v1/events**", (route) => {
+    if (route.request().method() === "GET") {
+      return route.fulfill({ json: { data: [] } });
+    }
+    return route.fallback();
+  });
+  await page.route("**/api/v1/tasks", (route) => route.fulfill({ json: { data: { history: [], queue_depth: null } } }));
+
+  await page.goto("/");
+
+  await expect(page.getByText("暂无事件").last()).toBeVisible();
+  await expect(page.getByText(/先点击“采集全部来源”/).last()).toBeVisible();
+  await expect(page.getByText("请选择一个事件查看本站分析和来源报道。")).toBeVisible();
+});
