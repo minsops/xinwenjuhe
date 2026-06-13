@@ -65,6 +65,8 @@ class ProjectContractsTest(unittest.TestCase):
         events_api = (BACKEND_ROOT / "app/api/v1/events.py").read_text(encoding="utf-8")
         discovery_api = (BACKEND_ROOT / "app/api/v1/discovery.py").read_text(encoding="utf-8")
         sources_api = (BACKEND_ROOT / "app/api/v1/sources.py").read_text(encoding="utf-8")
+        tasks_api = (BACKEND_ROOT / "app/api/v1/tasks.py").read_text(encoding="utf-8")
+        celery_app = (BACKEND_ROOT / "app/tasks/celery_app.py").read_text(encoding="utf-8")
         self.assertIn('/{event_id}/merge', events_api)
         self.assertIn('/{event_id}/split', events_api)
         self.assertIn('router.post("/sources")', discovery_api)
@@ -74,6 +76,9 @@ class ProjectContractsTest(unittest.TestCase):
         self.assertIn("cursor: str | None = None", sources_api)
         self.assertIn("_source_cursor", sources_api)
         self.assertIn("_source_article_cursor", sources_api)
+        self.assertIn("discover-trending", tasks_api)
+        self.assertIn("discover-trending-events", celery_app)
+        self.assertIn("app.tasks.trending_task", celery_app)
 
     def test_analysis_payload_includes_graph_and_timeline(self) -> None:
         mapper = (BACKEND_ROOT / "app/services/analyzer/consensus_mapper.py").read_text(encoding="utf-8")

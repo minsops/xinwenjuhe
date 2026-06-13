@@ -9,6 +9,7 @@ from app.tasks.cluster_task import cluster_new_articles
 from app.tasks.collect_task import collect_active_sources, collect_hot_events
 from app.tasks.credibility_task import refresh_source_credibility
 from app.tasks.progress import get_progress, list_dead_letters, list_progress, list_source_alerts, queue_depth
+from app.tasks.trending_task import discover_and_seed_events
 
 router = APIRouter()
 
@@ -58,6 +59,12 @@ async def start_collect_active_sources(limit: int | None = None):
 async def start_collect_hot_events(limit: int = 10):
     result = collect_hot_events.delay(limit)
     return envelope({"task_id": result.id, "status": "queued", "task": "collect_hot_events"})
+
+
+@router.post("/discover-trending")
+async def start_discover_trending(limit: int = 10):
+    result = discover_and_seed_events.delay(limit)
+    return envelope({"task_id": result.id, "status": "queued", "task": "discover_and_seed_events"})
 
 
 @router.post("/cluster-new-articles")

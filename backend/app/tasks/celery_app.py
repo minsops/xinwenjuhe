@@ -29,6 +29,7 @@ celery.conf.imports = (
     "app.tasks.cluster_task",
     "app.tasks.collect_task",
     "app.tasks.credibility_task",
+    "app.tasks.trending_task",
 )
 celery.conf.beat_schedule = {
     "collect-active-sources": {
@@ -45,6 +46,10 @@ celery.conf.beat_schedule = {
     },
     "scan-events-needing-analysis": {
         "task": "app.tasks.analyze_task.scan_events_needing_analysis",
+        "schedule": 30 * 60,
+    },
+    "discover-trending-events": {
+        "task": "app.tasks.trending_task.discover_and_seed_events",
         "schedule": 30 * 60,
     },
     "refresh-source-credibility": {
