@@ -1,5 +1,5 @@
 import type { EventAnalysis } from "../../types/analysis";
-import { getUiText } from "../../utils/i18n";
+import { formatSourceName, getUiText } from "../../utils/i18n";
 
 type Props = {
   graph?: EventAnalysis["source_graph"];
@@ -15,7 +15,7 @@ export function SourceGraph({ graph, sourceLabels = {} }: Props) {
   const conflicts = edges.length - reported;
 
   return (
-    <section className="border-t border-stone-200 p-4 dark:border-stone-800">
+    <section aria-label={text.sourceGraph} className="border-t border-stone-200 p-4 dark:border-stone-800">
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-500">{text.sourceGraph}</h2>
       {sources.length === 0 && edges.length === 0 ? (
         <p className="text-sm text-stone-500">{text.noSourceGraph}</p>
@@ -53,9 +53,9 @@ function formatSourceNode(
   sourceLabels: Record<string, string>,
 ): string {
   if (sourceLabels[source.id]) return sourceLabels[source.id];
-  if (source.label && !isUuidLike(source.label)) return source.label;
-  if (source.name && !isUuidLike(source.name)) return source.name;
-  if (!isUuidLike(source.id)) return source.id;
+  if (source.label && !isUuidLike(source.label)) return formatSourceName(source.label);
+  if (source.name && !isUuidLike(source.name)) return formatSourceName(source.name);
+  if (!isUuidLike(source.id)) return formatSourceName(source.id);
   return "未知来源";
 }
 

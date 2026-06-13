@@ -1,5 +1,5 @@
 import { Tags } from "lucide-react";
-import { getUiText } from "../../utils/i18n";
+import { formatSourceName, getUiText } from "../../utils/i18n";
 import { Badge } from "../shared/Badge";
 
 type Props = {
@@ -19,7 +19,7 @@ export function NarrativeFrameComparison({ frames, sourceLabels = {} }: Props) {
         {frames.length ? frames.map((frame, index) => {
           const tags = Array.isArray(frame.frames) ? frame.frames.map((item) => formatFrameLabel(String(item))) : ["一般新闻报道"];
           const sourceId = String(frame.source_id ?? "");
-          const sourceName = formatSourceName(sourceId, frame.source_name, sourceLabels, index);
+          const sourceName = formatNarrativeSourceName(sourceId, frame.source_name, sourceLabels, index);
           return (
             <details key={index} open={index < 2} className="rounded border border-stone-200 p-3 text-sm dark:border-stone-700">
               <summary className="cursor-pointer">{sourceName}</summary>
@@ -69,15 +69,15 @@ function formatFrameLabel(value: string): string {
   return value;
 }
 
-function formatSourceName(
+function formatNarrativeSourceName(
   sourceId: string,
   sourceName: unknown,
   sourceLabels: Record<string, string>,
   index: number,
 ): string {
   if (sourceId && sourceLabels[sourceId]) return sourceLabels[sourceId];
-  if (typeof sourceName === "string" && sourceName.trim() && !isUuidLike(sourceName)) return sourceName;
-  if (sourceId && !isUuidLike(sourceId)) return sourceId;
+  if (typeof sourceName === "string" && sourceName.trim() && !isUuidLike(sourceName)) return formatSourceName(sourceName);
+  if (sourceId && !isUuidLike(sourceId)) return formatSourceName(sourceId);
   return `来源 ${index + 1}`;
 }
 
