@@ -101,6 +101,7 @@ class ProjectContractsTest(unittest.TestCase):
         mapper = (BACKEND_ROOT / "app/services/analyzer/consensus_mapper.py").read_text(encoding="utf-8")
         service = (BACKEND_ROOT / "app/services/analyzer/event_analysis_service.py").read_text(encoding="utf-8")
         events_api = (BACKEND_ROOT / "app/api/v1/events.py").read_text(encoding="utf-8")
+        analysis_api = (BACKEND_ROOT / "app/api/v1/analysis.py").read_text(encoding="utf-8")
         self.assertIn("source_graph", mapper)
         self.assertIn("timeline", mapper)
         self.assertIn("_semantic_group", mapper)
@@ -112,6 +113,9 @@ class ProjectContractsTest(unittest.TestCase):
         self.assertIn("should_reanalyze", service)
         self.assertIn("settings.reanalyze_threshold", service)
         self.assertIn("process_event_pipeline.delay", events_api)
+        self.assertIn("process_event_pipeline.delay", analysis_api)
+        self.assertIn('"analysis_queued"', analysis_api)
+        self.assertNotIn("EventAnalysisService(db).run", analysis_api)
 
     def test_analyzer_outputs_are_schema_validated(self) -> None:
         extractor = (BACKEND_ROOT / "app/services/analyzer/fact_extractor.py").read_text(encoding="utf-8")
