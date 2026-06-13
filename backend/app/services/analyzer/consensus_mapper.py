@@ -94,9 +94,17 @@ class ConsensusMapper:
         }
         return await self.localize_payload(payload)
 
-    async def localize_payload(self, payload: dict) -> dict:
+    async def localize_payload(self, payload: dict, include_summary_original: bool = False) -> dict:
         """Translate user-visible analysis fields to Chinese while preserving originals."""
         translator = TranslationService()
+        await self._translate_payload_field(
+            payload,
+            "summary",
+            "summary_original",
+            translator,
+            preserve_original=include_summary_original,
+            fallback="这条事件概要暂时没有可用中文翻译。请查看原文。",
+        )
         for item in (payload.get("consensus_facts") or [])[:12]:
             await self._translate_item_field(item, "fact", "fact_original", translator)
         for item in (payload.get("disputed_facts") or [])[:20]:
@@ -106,6 +114,33 @@ class ConsensusMapper:
         for item in (payload.get("timeline") or [])[:8]:
             await self._translate_item_field(item, "fact", "fact_original", translator)
         return payload
+
+    @classmethod
+    async def _translate_payload_field(
+        cls,
+        payload: dict,
+        field: str,
+        original_field: str,
+        translator: TranslationService,
+        preserve_original: bool,
+        fallback: str,
+    ) -> None:
+        value = payload.get(field)
+        if not isinstance(value, str) or not value.strip() or not cls._needs_chinese_translation(value):
+            return
+        if preserve_original:
+            payload.setdefault(original_field, value)
+            payload.setdefault(f"{original_field}_language", "auto")
+        try:
+            translated, _ = await translator.translate_on_demand(
+                value,
+                "auto",
+                "zh",
+                field=f"analysis_{field}",
+            )
+        except TranslationError:
+            translated = fallback
+        payload[field] = translated
 
     @classmethod
     async def _translate_item_field(

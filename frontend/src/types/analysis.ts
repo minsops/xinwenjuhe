@@ -2,6 +2,8 @@ export type EventAnalysis = {
   id?: string;
   event_id: string;
   summary: string;
+  summary_original?: string;
+  summary_original_language?: string;
   analysis_version?: number;
   article_count_at_analysis?: number;
   consensus_facts: Array<{ fact: string; fact_original?: string; fact_original_language?: string; confirmed_by: number; total: number; article_ids?: string[]; source_ids?: string[]; syndicated_count?: number }>;

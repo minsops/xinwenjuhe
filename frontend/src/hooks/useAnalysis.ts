@@ -21,6 +21,8 @@ function demoAnalysis(): EventAnalysis {
   return {
     event_id: "demo",
     summary: "多家报道确认夜间发生同一事件，但伤亡数字和责任归属仍存在明显分歧。",
+    summary_original: "Multiple reports confirm the same overnight incident, but casualty figures and attribution remain disputed.",
+    summary_original_language: "en",
     consensus_facts: [{
       fact: "夜间发生事件，当地应急力量随后介入。",
       fact_original: "An overnight incident occurred and local authorities responded.",

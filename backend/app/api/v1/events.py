@@ -282,7 +282,7 @@ async def get_event_analysis(event_id: UUID, db: AsyncSession = Depends(get_db))
     if not analysis:
         raise ApiError("analysis_not_found", "Analysis not found", 404)
     payload = EventAnalysisRead.model_validate(analysis).model_dump(mode="json")
-    payload = await ConsensusMapper().localize_payload(payload)
+    payload = await ConsensusMapper().localize_payload(payload, include_summary_original=True)
     return envelope(payload)
 
 

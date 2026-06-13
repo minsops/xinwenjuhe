@@ -56,7 +56,12 @@ export function AnalysisPanel({ analysis, eventId, sourceLabels = {}, onFactSele
         本站把多家媒体报道拆成事实、争议和盲区。下面不是外站搬运，而是本站对同一事件的结构化分析。
       </div>
       <div className="space-y-3 px-4 pb-4">
-        <EventSummary summary={analysis.summary} count={analysis.consensus_facts[0]?.total ?? 0} />
+        <EventSummary
+          summary={analysis.summary}
+          summaryOriginal={analysis.summary_original}
+          summaryOriginalLanguage={analysis.summary_original_language}
+          count={analysis.consensus_facts[0]?.total ?? 0}
+        />
         <ConsensusZone items={analysis.consensus_facts} onFactSelect={onFactSelect} />
         <DisputeZone items={analysis.disputed_facts} />
         <BlindSpotZone items={analysis.blind_spots} />

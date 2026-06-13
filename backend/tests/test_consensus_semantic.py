@@ -95,6 +95,24 @@ class ConsensusSemanticTest(unittest.TestCase):
 
         self.assertTrue(summary.startswith("基于 2 个来源"))
 
+    def test_localize_payload_preserves_english_summary_original_for_api(self) -> None:
+        payload = {
+            "summary": "Two independent sources report a strike while details remain limited.",
+            "consensus_facts": [],
+            "disputed_facts": [],
+            "blind_spots": [],
+            "timeline": [],
+        }
+
+        localized = asyncio.run(
+            ConsensusMapper(llm=EmptyLLM()).localize_payload(payload, include_summary_original=True)
+        )
+
+        self.assertNotEqual(localized["summary"], localized["summary_original"])
+        self.assertGreaterEqual(_cjk_count(localized["summary"]), 6)
+        self.assertEqual(localized["summary_original"], "Two independent sources report a strike while details remain limited.")
+        self.assertEqual(localized["summary_original_language"], "auto")
+
     def test_wire_reposts_count_as_one_independent_source(self) -> None:
         event_id = uuid.uuid4()
         wire_sources = [uuid.uuid4() for _ in range(4)]
@@ -153,6 +171,10 @@ def _fragment(
         certainty_level="confirmed",
         embedding=embedding,
     )
+
+
+def _cjk_count(value: str) -> int:
+    return sum(1 for char in value if "\u4e00" <= char <= "\u9fff")
 
 
 if __name__ == "__main__":
