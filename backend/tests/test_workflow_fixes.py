@@ -150,6 +150,72 @@ class WorkflowFixesTest(unittest.TestCase):
         self.assertEqual(fragments[0].article_id, original.id)
         self.assertEqual(fragments[0].entities["_via_wire"], "REUTERS")
 
+    def test_fact_extraction_is_concurrent_and_skips_failed_articles(self) -> None:
+        event_id = uuid.uuid4()
+        articles = [
+            Article(
+                id=uuid.uuid4(),
+                source_id=uuid.uuid4(),
+                external_url=f"https://example.test/{index}",
+                title_original=f"Article {index}",
+                content_original="Article body",
+                language="en",
+            )
+            for index in range(7)
+        ]
+        articles[-1].title_original = "bad article"
+
+        class FakeExtractor:
+            def __init__(self) -> None:
+                self.active = 0
+                self.max_active = 0
+
+            async def extract(self, article: Article) -> list[dict]:
+                self.active += 1
+                self.max_active = max(self.max_active, self.active)
+                try:
+                    await asyncio.sleep(0.01)
+                    if article.title_original == "bad article":
+                        raise RuntimeError("extract failed")
+                    return [
+                        {
+                            "type": "what",
+                            "content": article.title_original,
+                            "content_en": article.title_original,
+                            "entities": {},
+                            "numbers": {},
+                            "source_attribution": "unattributed",
+                            "certainty_level": "reportedly",
+                        }
+                    ]
+                finally:
+                    self.active -= 1
+
+        class FakeEmbedder:
+            is_using_fallback = False
+
+            async def embed_text(self, text: str) -> list[float]:
+                return [1.0, 0.0, 0.0]
+
+        fake_extractor = FakeExtractor()
+        with (
+            patch(
+                "app.services.analyzer.event_analysis_service.FactExtractor",
+                return_value=fake_extractor,
+            ),
+            patch(
+                "app.services.analyzer.event_analysis_service.TextEmbedder",
+                return_value=FakeEmbedder(),
+            ),
+        ):
+            fragments = asyncio.run(
+                EventAnalysisService(None)._extract_fragments(event_id, articles)
+            )
+
+        self.assertEqual(len(fragments), 6)
+        self.assertGreaterEqual(fake_extractor.max_active, 2)
+        self.assertLessEqual(fake_extractor.max_active, 5)
+
 
 if __name__ == "__main__":
     unittest.main()

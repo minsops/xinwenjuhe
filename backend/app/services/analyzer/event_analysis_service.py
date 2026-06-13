@@ -119,8 +119,16 @@ class EventAnalysisService:
                 )
             return article_fragments
 
-        nested = await asyncio.gather(*(extract_article(article) for article in articles))
-        fragments = [fragment for article_fragments in nested for fragment in article_fragments]
+        nested = await asyncio.gather(
+            *(extract_article(article) for article in articles),
+            return_exceptions=True,
+        )
+        fragments: list[FactFragment] = []
+        for result in nested:
+            if isinstance(result, Exception):
+                logger.warning("Fact extraction skipped one article for event %s: %s", event_id, result)
+                continue
+            fragments.extend(result)
         if fragments and embedder.is_using_fallback:
             logger.warning(
                 "Fact fragment embeddings used hash fallback for event %s; semantic analysis quality may be degraded",
